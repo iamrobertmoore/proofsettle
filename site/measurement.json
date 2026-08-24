@@ -1,0 +1,269 @@
+{
+  "scannedAt": "2026-08-23T19:19:45.433Z",
+  "startBlock": 5261642,
+  "headBlock": 5361642,
+  "windowBlocks": 100000,
+  "approxDays": 17.4,
+  "unscannedBlocks": 0,
+  "verifierEvents": 10217,
+  "uniqueTransactions": 10035,
+  "distinctContracts": 142,
+  "top2Calls": 9412,
+  "top2Pct": 93.79,
+  "tailContracts": 140,
+  "tailCalls": 623,
+  "singleSenderContracts": 134,
+  "topContracts": [
+    {
+      "contract": "0x6eeeA8340195B1eE41883AA2F489a9259ab238cF",
+      "calls": 4706,
+      "pct": 46.9,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5327112,
+      "lastBlock": 5348995
+    },
+    {
+      "contract": "0xE64f8b159FC22F9B0B1ca4980362eB5765cAb0f3",
+      "calls": 4706,
+      "pct": 46.9,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5354056,
+      "lastBlock": 5354390
+    },
+    {
+      "contract": "0x0000000000000000000000000000000000000FD2",
+      "calls": 65,
+      "pct": 0.65,
+      "senders": 7,
+      "selectors": 2,
+      "firstBlock": 5262248,
+      "lastBlock": 5357740
+    },
+    {
+      "contract": "0xBff138558631157A927B5c137634eE356c24489d",
+      "calls": 51,
+      "pct": 0.51,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5331401,
+      "lastBlock": 5349715
+    },
+    {
+      "contract": "0x868041091DCda15934e16E79E30c2DcCBeEFFa60",
+      "calls": 33,
+      "pct": 0.33,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5326328,
+      "lastBlock": 5326360
+    },
+    {
+      "contract": "0xB4fDb9f6e4dB548aC3b40DFCc7f72E4ef6b70d2B",
+      "calls": 29,
+      "pct": 0.29,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5330430,
+      "lastBlock": 5330460
+    },
+    {
+      "contract": "0x4C4381dB68a1cAAE46a2E6CFc2f667ad22Dddf81",
+      "calls": 18,
+      "pct": 0.18,
+      "senders": 1,
+      "selectors": 2,
+      "firstBlock": 5307546,
+      "lastBlock": 5307631
+    },
+    {
+      "contract": "0x071ff3210EA7619B7065ea24058030464093Dccd",
+      "calls": 18,
+      "pct": 0.18,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5343036,
+      "lastBlock": 5347333
+    },
+    {
+      "contract": "0x14cFD68e1dE81B34BdE116DEB7b89C49d77822EF",
+      "calls": 17,
+      "pct": 0.17,
+      "senders": 1,
+      "selectors": 2,
+      "firstBlock": 5305557,
+      "lastBlock": 5305619
+    },
+    {
+      "contract": "0x581A7413e1fCcB767EC8BA9E837df43fbA06b3D2",
+      "calls": 17,
+      "pct": 0.17,
+      "senders": 1,
+      "selectors": 2,
+      "firstBlock": 5305647,
+      "lastBlock": 5305665
+    },
+    {
+      "contract": "0x00640B21EAd919959D65c109d01f634aBC79F132",
+      "calls": 15,
+      "pct": 0.15,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5341179,
+      "lastBlock": 5341193
+    },
+    {
+      "contract": "0x2Be9B8640ED32815d3B9e8C92AbcD3F15F07396f",
+      "calls": 13,
+      "pct": 0.13,
+      "senders": 11,
+      "selectors": 1,
+      "firstBlock": 5265526,
+      "lastBlock": 5347912
+    }
+  ],
+  "mostDistinctSenders": [
+    {
+      "contract": "0x2Be9B8640ED32815d3B9e8C92AbcD3F15F07396f",
+      "calls": 13,
+      "pct": 0.13,
+      "senders": 11,
+      "selectors": 1,
+      "firstBlock": 5265526,
+      "lastBlock": 5347912
+    },
+    {
+      "contract": "0x0000000000000000000000000000000000000FD2",
+      "calls": 65,
+      "pct": 0.65,
+      "senders": 7,
+      "selectors": 2,
+      "firstBlock": 5262248,
+      "lastBlock": 5357740
+    },
+    {
+      "contract": "0x9fa9Cd49d73449A5AC03E7d957048675C6AC04bE",
+      "calls": 5,
+      "pct": 0.05,
+      "senders": 2,
+      "selectors": 1,
+      "firstBlock": 5344932,
+      "lastBlock": 5354342
+    },
+    {
+      "contract": "0x382b0Bb3CbC09B08Be8190bd746DA9A275Ab7B25",
+      "calls": 3,
+      "pct": 0.03,
+      "senders": 2,
+      "selectors": 2,
+      "firstBlock": 5346306,
+      "lastBlock": 5346372
+    },
+    {
+      "contract": "0xC86a454B32d44db77E09DAcAd99880Dc6b68687b",
+      "calls": 3,
+      "pct": 0.03,
+      "senders": 2,
+      "selectors": 2,
+      "firstBlock": 5349234,
+      "lastBlock": 5349299
+    },
+    {
+      "contract": "0xe3565A1A1B947f363ab433889522267cE3D4736F",
+      "calls": 2,
+      "pct": 0.02,
+      "senders": 2,
+      "selectors": 1,
+      "firstBlock": 5302229,
+      "lastBlock": 5306285
+    }
+  ],
+  "daily": [
+    {
+      "daysAgo": 0,
+      "allTxs": 19,
+      "excludingTop2": 19
+    },
+    {
+      "daysAgo": 1,
+      "allTxs": 4737,
+      "excludingTop2": 31
+    },
+    {
+      "daysAgo": 2,
+      "allTxs": 4790,
+      "excludingTop2": 92
+    },
+    {
+      "daysAgo": 3,
+      "allTxs": 67,
+      "excludingTop2": 67
+    },
+    {
+      "daysAgo": 4,
+      "allTxs": 52,
+      "excludingTop2": 52
+    },
+    {
+      "daysAgo": 5,
+      "allTxs": 60,
+      "excludingTop2": 60
+    },
+    {
+      "daysAgo": 6,
+      "allTxs": 83,
+      "excludingTop2": 75
+    },
+    {
+      "daysAgo": 7,
+      "allTxs": 43,
+      "excludingTop2": 43
+    },
+    {
+      "daysAgo": 8,
+      "allTxs": 31,
+      "excludingTop2": 31
+    },
+    {
+      "daysAgo": 9,
+      "allTxs": 95,
+      "excludingTop2": 95
+    },
+    {
+      "daysAgo": 10,
+      "allTxs": 23,
+      "excludingTop2": 23
+    },
+    {
+      "daysAgo": 11,
+      "allTxs": 7,
+      "excludingTop2": 7
+    },
+    {
+      "daysAgo": 12,
+      "allTxs": 4,
+      "excludingTop2": 4
+    },
+    {
+      "daysAgo": 13,
+      "allTxs": 4,
+      "excludingTop2": 4
+    },
+    {
+      "daysAgo": 15,
+      "allTxs": 8,
+      "excludingTop2": 8
+    },
+    {
+      "daysAgo": 16,
+      "allTxs": 10,
+      "excludingTop2": 10
+    },
+    {
+      "daysAgo": 17,
+      "allTxs": 2,
+      "excludingTop2": 2
+    }
+  ]
+}

@@ -51,6 +51,43 @@ Both proofs are checked inside `ComputeSettlement.settle`. Splitting them across
 would have been easier, and would have made "neither half settles without the other" a property of
 the off-chain worker rather than of the contract. A worker is not a guarantee.
 
+## Deployed, live, on testnet
+
+| Contract | Chain | Address |
+|---|---|---|
+| `ComputeJobEscrow` | Ethereum Sepolia | [`0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40`](https://sepolia.etherscan.io/address/0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40) |
+| `EnclaveRegistry` | Creditcoin CC3 testnet | [`0xAc014b7Df7f9b2dA343d895F22a392c655338bFb`](https://creditcoin-testnet.blockscout.com/address/0xAc014b7Df7f9b2dA343d895F22a392c655338bFb) |
+| `ComputeCredit` | Creditcoin CC3 testnet | [`0x43872Caef4b8286D93d155e34e602C0Aa3a78Eee`](https://creditcoin-testnet.blockscout.com/address/0x43872Caef4b8286D93d155e34e602C0Aa3a78Eee) |
+| `ComputeSettlement` | Creditcoin CC3 testnet | [`0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06`](https://creditcoin-testnet.blockscout.com/address/0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06) |
+| `EvmV1Decoder` | Creditcoin CC3 testnet | [`0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40`](https://creditcoin-testnet.blockscout.com/address/0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40) |
+
+`EvmV1Decoder` is Gluwa's own decoding library from `@gluwa/usc-contracts`, deployed separately and
+linked into `ComputeSettlement`, because it exposes public functions. It is on Creditcoin at the
+same address as the escrow is on Sepolia, which is not a mistake: `CREATE` derives an address from
+the deployer and its nonce alone, so one fresh wallet's first deployment on two chains lands on the
+same address on both.
+
+The wiring is not asserted, it is read back. `script/deploy-creditcoin.sh` reads every link off
+chain after deploying and refuses to report success if any of it disagrees. Repeat the reads
+yourself in three commands:
+
+```bash
+RPC=https://rpc.cc3-testnet.creditcoin.network
+cast call 0x43872Caef4b8286D93d155e34e602C0Aa3a78Eee "minter()(address)"      --rpc-url $RPC
+cast call 0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06 "SOURCE_ESCROW()(address)" --rpc-url $RPC
+cast call 0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06 "SOURCE_CHAIN_KEY()(uint64)" --rpc-url $RPC
+```
+
+The first must return the settlement address, so nothing but settlement can mint the credit. The
+second must return the Sepolia escrow, so no other contract's events can be presented as payment.
+The third must return `1`, the Attestcoin chain key for Sepolia, read from the protocol's own
+`ChainInfo` precompile rather than assumed.
+
+`cast code` at each address returns bytecode identical to what `forge build` produces from this
+repo, apart from three expected differences: the constructor immutables, the four sites in
+`ComputeSettlement` holding the linked library address, and the trailing solc metadata hash, which
+encodes compilation paths and so varies by machine.
+
 ## What this does not do
 
 **The registry does not verify hardware attestation on chain.** Verifying an AMD SEV-SNP or Google
@@ -173,6 +210,40 @@ I have built attestation verification joined to a registry twice before: once ag
 on-chain registry, entirely in the browser, and once against a document store. The pattern is one I
 understand rather than a codebase I pasted, and the Solidity here is written fresh for this
 contract during the hackathon. Saying so is cheaper than having someone wonder.
+
+## One settlement, end to end, on the live network
+
+A real job, paid for on Ethereum Sepolia, settled on Creditcoin against the Attestcoin oracle.
+Both transactions are public.
+
+| | |
+|---|---|
+| Payment | [`0x75883943…4f69`](https://sepolia.etherscan.io/tx/0x75883943a9e57f7ba3c4b96212d02afd4350532f7565530cc5644b1cb5fa4f69) on Sepolia, block 11,556,369, tx index 120 |
+| Settlement | [`0x85e9b259…33a0b`](https://creditcoin-testnet.blockscout.com/tx/0x85e9b25947f5fbdef4cd2934eb14da958f28c55bc9631891cf91979637733a0b) on Creditcoin, block 5,365,240 |
+| Job id | `0xe11025fb566447366b4b6ca32038bb522fce3c35f72bf903c346f7c30dfc23ac` |
+| Cost to settle | 465,290 gas at 0.5 gwei, so 0.000233 CTC |
+| Waiting for attestation | 6 minutes 30 seconds, inside the 7 to 9 minute band measured beforehand |
+
+The four logs that transaction emitted are the whole argument in order, and anyone can read them
+off chain:
+
+1. `TransactionVerified(1, 11556369, 120)` from the Attestcoin verifier precompile at
+   `0x…0FD2`. The protocol itself, not this project, attesting that the Sepolia payment is real.
+2. `ProofConsumed(queryId, 11556369, 120)` from `ComputeSettlement`, marking that query spent.
+   `consumedQueries(0x6a791d27…12aaf)` reads `true` on chain now, so the same proof cannot settle
+   a second time.
+3. `JobSettled(jobId, provider, enclave, …)` carrying the enclave signing key that the registry
+   confirmed was permitted by *the buyer's own policy*, taken from the proven Sepolia event.
+4. `Transfer(0x0, provider, 1e15)` from `ComputeCredit`. Total supply is exactly 1e15, matching
+   the 0.001 ETH locked on Sepolia and nothing more.
+
+Both proofs were checked in that single transaction. Neither half could have settled without the
+other.
+
+**The signer in that run was a development key, not an attested enclave, and the system says so
+out loud.** It is registered under a measurement whose preimage is the string
+`proofsettle.development-signer.v1 NOT-ATTESTED`, and the worker prints a warning on every run
+that uses it. Nothing in this repository presents that mode as evidence of hardware attestation.
 
 ## Verified against the live network
 

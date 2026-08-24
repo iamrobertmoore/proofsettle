@@ -7,7 +7,8 @@
   "scripts": {
     "build": "forge build",
     "test": "forge test -vv",
-    "worker": "tsx worker/index.ts"
+    "worker": "tsx worker/settle.ts",
+    "settle": "tsx worker/settle.ts once"
   },
   "dependencies": {
     "@gluwa/usc-contracts": "0.1.2",

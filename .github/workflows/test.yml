@@ -1,0 +1,37 @@
+# The test suite, and the mutation check that proves the test suite can fail.
+#
+# Pinned to Foundry 1.2.3, the version this repository was built and tested against, and the one
+# Gluwa pin in their own Attestcoin examples.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The contracts import @gluwa/usc-contracts and @openzeppelin from node_modules, which
+      # foundry.toml lists as a library path, so this has to happen before forge test.
+      - run: yarn install
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.2.3
+
+      - run: forge install foundry-rs/forge-std --no-git
+
+      - name: Tests
+        run: forge test
+
+      - name: Mutation check
+        run: ./script/mutation-check.sh

@@ -1,0 +1,47 @@
+# Publishes site/ to GitHub Pages, with the deck alongside it so both have stable URLs.
+#
+# GitHub Pages can only publish a branch's root or its /docs folder. The page lives in site/,
+# so this assembles the published directory instead of moving the repo around.
+#
+# Enable it once: Settings, then Pages, then set Source to "GitHub Actions".
+#
+# Manual trigger only, deliberately. GitHub Pages is not available on private repositories on the
+# free plan, so a push trigger would paint the Actions tab red for as long as this repository stays
+# private. Run it from the Actions tab once the repository is public. Add a push trigger then if
+# the page starts changing often enough to be worth it.
+name: Publish the verifier page
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the published directory
+        run: |
+          mkdir -p _site
+          cp site/index.html site/deployments.json site/measurement.json _site/
+          cp deck/ProofSettle-deck.pdf _site/
+          ls -la _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

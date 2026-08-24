@@ -1,0 +1,9 @@
+out/
+cache/
+node_modules/
+broadcast/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

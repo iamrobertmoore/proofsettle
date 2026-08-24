@@ -1,0 +1,16 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+libs = ["lib", "node_modules"]
+solc_version = "0.8.30"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+evm_version = "shanghai"
+verbosity = 2
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
+
+[fmt]
+line_length = 120
+tab_width = 4

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProofSettle: check it yourself</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' stroke='white' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="description" content="Verify a ProofSettle settlement on Creditcoin yourself, without trusting the README.">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f5f5f2;
+    --surface-1: #fcfcfb;
+    --surface-2: #eeeeea;
+    --border:    #dedcd4;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #78776f;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --good:     #1baf7a;
+    --bad:      #d1344a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --border:    #35342f;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #96958b;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --good:     #199e70;
+      --bad:      #e2596c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --border:    #35342f;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #96958b;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --good:     #199e70;
+    --bad:      #e2596c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 40px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.02em; }
+  h2 { font-size: 20px; margin: 48px 0 8px; letter-spacing: -0.01em; }
+  h3 { font-size: 15px; margin: 28px 0 8px; color: var(--text-secondary); font-weight: 600; }
+  p  { color: var(--text-secondary); margin: 0 0 14px; }
+  .lede { font-size: 18px; color: var(--text-primary); }
+  code, .mono { font-family: var(--mono); font-size: 13px; }
+  a { color: var(--series-1); }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .grid { display: grid; gap: 12px; }
+  @media (min-width: 700px) { .cols-4 { grid-template-columns: repeat(4, 1fr); } .cols-2 { grid-template-columns: 1fr 1fr; } }
+
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .tile .n { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile .k { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  label { display: block; font-size: 13px; color: var(--text-secondary); margin: 14px 0 6px; font-weight: 600; }
+  input, select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-primary); font-family: var(--mono); font-size: 13px;
+  }
+  button {
+    margin-top: 16px; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--series-1);
+    background: var(--series-1); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: default; }
+
+  .checks { list-style: none; padding: 0; margin: 18px 0 0; }
+  .checks li {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px;
+  }
+  .checks li:first-child { border-top: 0; }
+  .mark { flex: none; width: 18px; font-weight: 700; }
+  .ok   { color: var(--good); }
+  .no   { color: var(--bad); }
+  .checks .why { color: var(--text-muted); font-size: 13px; display: block; margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .scroll { overflow-x: auto; }
+
+  .bars { margin-top: 8px; }
+  .barrow { display: grid; grid-template-columns: 74px 1fr 62px; gap: 10px; align-items: center; padding: 3px 0; }
+  .barrow .lbl { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .barrow .val { font-size: 12px; color: var(--text-secondary); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .track { position: relative; height: 16px; }
+  .bar { position: absolute; top: 2px; height: 12px; border-radius: 0 4px 4px 0; }
+  .b1 { background: var(--series-1); }
+  /* 2px surface ring so the overlapping series stays legible where the two nearly coincide */
+  .b2 { background: var(--series-2); box-shadow: 0 0 0 2px var(--surface-0); }
+  .barrow:hover .track { outline: 1px solid var(--border); outline-offset: 3px; border-radius: 3px; }
+  .legend { display: flex; gap: 18px; margin: 12px 0 4px; font-size: 13px; color: var(--text-secondary); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  .note { background: var(--surface-2); border-left: 3px solid var(--series-2); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 14px; color: var(--text-secondary); }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>ProofSettle: check it yourself</h1>
+  <p class="lede">
+    This page does not ask you to believe the README. Paste a job id and it reads Creditcoin
+    directly, re-runs every check the settlement contract ran, and shows you which ones hold.
+  </p>
+</header>
+
+<h2>Verify a settlement</h2>
+<p>
+  Everything below is read live from <code>rpc.cc3-testnet.creditcoin.network</code> in your own
+  browser. No backend, no API key, nothing cached. View source if you would rather read the code
+  than run it.
+</p>
+
+<div class="card">
+  <label for="settlement">Settlement contract</label>
+  <input id="settlement" spellcheck="false" placeholder="0x… (filled from deployments.json)">
+  <label for="registry">Enclave registry</label>
+  <input id="registry" spellcheck="false" placeholder="0x…">
+  <label for="jobid">Job id</label>
+  <input id="jobid" spellcheck="false" placeholder="0x… 32 bytes">
+  <button id="go">Run the checks</button>
+</div>
+
+<ul class="checks" id="results"></ul>
+
+<h2>How much of the Attestcoin oracle is actually being used</h2>
+<p>
+  Before building on a protocol it is worth knowing who else is. So this measures it rather than
+  guessing: every event the Attestcoin verifier precompile
+  (<code>0x…0FD2</code>) emitted on CC3 testnet across a
+  <span id="m-days"></span>-day window, and which contract caused each one.
+</p>
+
+<div class="grid cols-4" id="tiles"></div>
+
+<h3>Transactions per day carrying an Attestcoin proof</h3>
+<div class="legend">
+  <span><span class="swatch b1" style="background: var(--series-1)"></span>All transactions</span>
+  <span><span class="swatch b2" style="background: var(--series-2)"></span>Excluding the two highest-volume contracts</span>
+</div>
+<div class="bars" id="daily"></div>
+
+<h3>Where the traffic comes from</h3>
+<div class="scroll"><table id="contracts">
+  <thead><tr><th>Contract</th><th class="num">Txs</th><th class="num">Share</th><th class="num">Distinct senders</th></tr></thead>
+  <tbody></tbody>
+</table></div>
+
+<p class="note" id="reading"></p>
+
+<h3>What this measurement does and does not say</h3>
+<p>
+  It says what was measured: every verifier event in the window, with complete coverage and no
+  gaps. It does not say who operates any particular address, and it does not claim the two
+  highest-volume contracts are anyone in particular. What is visible is their shape: one sender
+  each, one function selector each, in tight bursts. Draw your own conclusion.
+</p>
+<p>
+  Reproduce it yourself with <code>script/measure.ts</code> in the repository. It is about forty
+  lines and it talks to the public RPC.
+</p>
+
+<footer>
+  <div id="prov"></div>
+  <p style="margin-top:10px">
+    ProofSettle. Built for BUIDL CTC 2026 Fall, AI track. Source:
+    <a href="https://github.com/iamrobertmoore/proofsettle">github.com/iamrobertmoore/proofsettle</a>
+  </p>
+</footer>
+
+</div>
+
+<script type="module">
+// Default to the public CC3 testnet RPC. `?rpc=` lets you point this at your own node, which is
+// also how the page is tested against a mock without pretending the network is reachable.
+const RPC = new URLSearchParams(location.search).get('rpc') || 'https://rpc.cc3-testnet.creditcoin.network';
+const VERIFIER = '0x0000000000000000000000000000000000000FD2';
+
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => n.toLocaleString('en-GB');
+
+// ---------- tiny ABI helpers, so this page has zero dependencies ----------
+const pad = (h) => h.replace(/^0x/, '').padStart(64, '0');
+const selector = (sig) => keccakHex(sig).slice(0, 10);
+
+async function rpc(method, params) {
+  const r = await fetch(RPC, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+  return j.result;
+}
+const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
+
+// keccak256, needed for function selectors. Small and self-contained.
+const RC=[1n,0x8082n,0x800000000000808an,0x8000000080008000n,0x808bn,0x80000001n,0x8000000080008081n,0x8000000000008009n,0x8an,0x88n,0x80008009n,0x8000000an,0x8000808bn,0x800000000000008bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,0x800an,0x800000008000000an,0x8000000080008081n,0x8000000000008080n,0x80000001n,0x8000000080008008n];
+const ROT=[[0,36,3,41,18],[1,44,10,45,2],[62,6,43,15,61],[28,55,25,21,56],[27,20,39,8,14]];
+const M=(1n<<64n)-1n, rl=(x,n)=>((x<<BigInt(n))|(x>>BigInt(64-n)))&M;
+function keccak(bytes){
+  const rate=136;
+  const padLen=(rate-((bytes.length+1)%rate))%rate;
+  const buf=new Uint8Array(bytes.length+1+padLen);
+  buf.set(bytes); buf[bytes.length]=0x01; buf[buf.length-1]|=0x80;
+  let s=Array.from({length:5},()=>new Array(5).fill(0n));
+  const dv=new DataView(buf.buffer);
+  for(let off=0;off<buf.length;off+=rate){
+    for(let i=0;i<rate/8;i++) s[i%5][Math.floor(i/5)]^=dv.getBigUint64(off+i*8,true);
+    for(let r=0;r<24;r++){
+      const c=[0,1,2,3,4].map(x=>s[x][0]^s[x][1]^s[x][2]^s[x][3]^s[x][4]);
+      for(let x=0;x<5;x++){const d=c[(x+4)%5]^rl(c[(x+1)%5],1);for(let y=0;y<5;y++)s[x][y]^=d;}
+      const b=Array.from({length:5},()=>new Array(5).fill(0n));
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)b[y][(2*x+3*y)%5]=rl(s[x][y],ROT[x][y]);
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)s[x][y]=b[x][y]^((~b[(x+1)%5][y]&M)&b[(x+2)%5][y]);
+      s[0][0]^=RC[r];
+    }
+  }
+  const out=new Uint8Array(32); const odv=new DataView(out.buffer);
+  for(let i=0;i<4;i++) odv.setBigUint64(i*8,s[i%5][Math.floor(i/5)],true);
+  return out;
+}
+const keccakHex=(str)=>'0x'+[...keccak(new TextEncoder().encode(str))].map(b=>b.toString(16).padStart(2,'0')).join('');
+
+// ---------- the checks ----------
+async function verify() {
+  const out = $('#results');
+  out.innerHTML = '';
+  const settlement = $('#settlement').value.trim();
+  const registry = $('#registry').value.trim();
+  const jobId = $('#jobid').value.trim();
+
+  const add = (ok, text, why) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="mark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span>` +
+      `<span><strong>${text}</strong>${why ? `<span class="why">${why}</span>` : ''}</span>`;
+    out.appendChild(li);
+  };
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(settlement)) return add(false, 'Settlement address looks wrong');
+  if (!/^0x[0-9a-fA-F]{64}$/.test(jobId)) return add(false, 'Job id must be 32 bytes');
+
+  try {
+    // settlements(bytes32) returns the full struct
+    const data = selector('settlements(bytes32)') + pad(jobId);
+    const raw = await call(settlement, data);
+    const words = raw.replace(/^0x/, '').match(/.{64}/g) || [];
+    if (words.length < 11) return add(false, 'No settlement found for that job id', 'The contract returned nothing usable. Either the job never settled, or the address is not a ProofSettle settlement contract.');
+
+    const queryId   = '0x' + words[0];
+    const provider  = '0x' + words[1].slice(24);
+    const payer     = '0x' + words[2].slice(24);
+    const amount    = BigInt('0x' + words[3]);
+    const toProvider= BigInt('0x' + words[4]);
+    const toPayer   = BigInt('0x' + words[5]);
+    const resultHash= '0x' + words[6];
+    const enclave   = '0x' + words[7].slice(24);
+    const outcome   = Number(BigInt('0x' + words[8]));
+    const scoreBps  = Number(BigInt('0x' + words[9]));
+    const settledAt = Number(BigInt('0x' + words[10]));
+
+    if (settledAt === 0) return add(false, 'That job has not settled', 'No settlement record exists on chain for this job id.');
+
+    const names = ['Rejected', 'Accepted', 'Partial'];
+    add(true, `Settled ${new Date(settledAt * 1000).toISOString().replace('T', ' ').slice(0, 19)} UTC`,
+      `Verdict: ${names[outcome] ?? outcome}${outcome === 2 ? ` at ${scoreBps / 100}%` : ''}. Result commitment ${resultHash.slice(0, 18)}…`);
+
+    // The proof was consumed exactly once.
+    const consumed = await call(settlement, selector('consumedQueries(bytes32)') + pad(queryId));
+    const wasConsumed = BigInt(consumed) === 1n;
+    add(wasConsumed, wasConsumed ? 'The Attestcoin proof was consumed, and cannot be reused' : 'Proof not marked consumed',
+      `Query id ${queryId.slice(0, 18)}… The contract records every proof it acts on, so the same Sepolia payment cannot settle twice.`);
+
+    // The enclave is a live registered signer for some measurement.
+    if (/^0x[0-9a-fA-F]{40}$/.test(registry)) {
+      const meas = await call(registry, selector('measurementOf(address)') + pad(enclave));
+      const bound = BigInt(meas) !== 0n;
+      add(bound, bound ? 'The signing enclave is bound to a registered build' : 'Signer is not in the registry',
+        `Signer ${enclave}. Measurement ${meas.slice(0, 18)}…`);
+
+      if (bound) {
+        const active = await call(registry, selector('isActiveSigner(bytes32,address)') + pad(meas) + pad(enclave));
+        const isActive = BigInt(active) === 1n;
+        add(isActive, isActive ? 'That binding is live, not revoked' : 'The binding has been revoked',
+          'A revoked enclave stops settling immediately, and the record stays readable so history is auditable.');
+      }
+    } else {
+      add(false, 'Registry address not supplied', 'Fill it in to check the enclave binding as well.');
+    }
+
+    // Value conservation.
+    const conserves = toProvider + toPayer === amount;
+    add(conserves, conserves ? 'The split conserves the payment exactly' : 'The split does not add up',
+      `${fmt(Number(toProvider) / 1e18)} to the provider, ${fmt(Number(toPayer) / 1e18)} back to the payer, of ${fmt(Number(amount) / 1e18)} paid on Sepolia.`);
+
+    add(true, 'Every number above came from Creditcoin, in your browser',
+      'This page holds no state and trusts nothing that is not on chain.');
+  } catch (e) {
+    add(false, 'Could not read the chain', String(e.message || e));
+  }
+}
+
+$('#go').addEventListener('click', () => { $('#go').disabled = true; verify().finally(() => ($('#go').disabled = false)); });
+
+// Prefill from deployments.json if present.
+fetch('deployments.json').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return;
+  if (d.settlement) $('#settlement').value = d.settlement;
+  if (d.enclaveRegistry) $('#registry').value = d.enclaveRegistry;
+  if (d.exampleJobId) $('#jobid').value = d.exampleJobId;
+}).catch(() => {});
+
+// Exposed so the browser test can drive the same code path a visitor uses.
+window.__proofsettle = { verify, RPC };
+
+// ---------- the measurement ----------
+fetch('measurement.json').then(r => r.json()).then((m) => {
+  $('#m-days').textContent = m.approxDays;
+
+  const tiles = [
+    [fmt(m.distinctContracts), 'contracts using the verifier'],
+    [m.top2Pct + '%', 'of traffic from just 2 of them'],
+    [`${m.singleSenderContracts}/${m.distinctContracts}`, 'have exactly one sender'],
+    [fmt(m.tailCalls), 'txs from all other contracts'],
+  ];
+  $('#tiles').innerHTML = tiles.map(([n, k]) => `<div class="tile"><div class="n">${n}</div><div class="k">${k}</div></div>`).join('');
+
+  const max = Math.max(...m.daily.map(d => d.allTxs));
+  $('#daily').innerHTML = m.daily.map((d) => {
+    const w1 = (d.allTxs / max) * 100;
+    const w2 = (d.excludingTop2 / max) * 100;
+    const automated = d.allTxs - d.excludingTop2;
+    const tip = `${d.daysAgo === 0 ? 'today' : d.daysAgo + ' days ago'}: ${fmt(d.allTxs)} transactions carried an Attestcoin proof. ` +
+      `${fmt(d.excludingTop2)} came from contracts other than the two highest-volume ones` +
+      (automated ? `, ${fmt(automated)} from those two.` : '.');
+    return `<div class="barrow" title="${tip}">
+      <span class="lbl">${d.daysAgo === 0 ? 'today' : d.daysAgo + 'd ago'}</span>
+      <span class="track">
+        <span class="bar b1" style="width:${w1}%"></span>
+        <span class="bar b2" style="width:${w2}%"></span>
+      </span>
+      <span class="val">${fmt(d.allTxs)}</span>
+    </div>`;
+  }).join('');
+
+  const tb = $('#contracts tbody');
+  tb.innerHTML = m.topContracts.map((c) => `<tr>
+      <td class="mono">${c.contract}</td>
+      <td class="num">${fmt(c.calls)}</td>
+      <td class="num">${c.pct}%</td>
+      <td class="num">${c.senders}</td>
+    </tr>`).join('');
+
+  const most = m.mostDistinctSenders[0];
+  $('#reading').innerHTML =
+    `Across ${m.approxDays} days and ${m.distinctContracts} contracts, the contract used by the most ` +
+    `distinct addresses is <code>${most.contract}</code>, with ${most.senders}. ` +
+    `That is the Attestcoin tutorial's own minter. ` +
+    `${m.singleSenderContracts} of ${m.distinctContracts} contracts have exactly one sender, which is ` +
+    `what builders testing their own work looks like rather than users using it.`;
+
+  $('#prov').innerHTML =
+    `Measured ${m.scannedAt.slice(0, 10)} over blocks ${fmt(m.startBlock)} to ${fmt(m.headBlock)} ` +
+    `(${fmt(m.windowBlocks)} blocks). ${fmt(m.verifierEvents)} verifier events across ` +
+    `${fmt(m.uniqueTransactions)} transactions. Unscanned blocks: ${m.unscannedBlocks}, so coverage is complete.`;
+}).catch((e) => { $('#reading').textContent = 'measurement.json could not be loaded: ' + e.message; });
+</script>
+</body>
+</html>

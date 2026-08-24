@@ -1,0 +1,12 @@
+{
+  "_comment": "Filled in after deployment. The page reads this to prefill its inputs.",
+  "network": "creditcoin-cc3-testnet",
+  "chainId": 102031,
+  "settlement": "",
+  "enclaveRegistry": "",
+  "computeCredit": "",
+  "sourceEscrow": "",
+  "sourceChain": "ethereum-sepolia",
+  "sourceChainKey": 1,
+  "exampleJobId": ""
+}

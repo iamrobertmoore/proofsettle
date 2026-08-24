@@ -11,7 +11,7 @@
 # Exits non-zero if any mutation survives.
 
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 FORGE="${FORGE:-forge}"
 BACKUP="$(mktemp -d)"

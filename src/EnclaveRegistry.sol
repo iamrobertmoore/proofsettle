@@ -7,7 +7,7 @@ pragma solidity 0.8.30;
 ///
 /// @dev THE TRUST BOUNDARY, STATED UP FRONT.
 ///
-/// This contract does NOT verify a hardware attestation. Verifying an AMD SEV-SNP or Google
+/// This contract does NOT verify a hardware attestation. Verifying an AMD SEV or Google
 /// Confidential Space attestation means walking an X.509 chain and doing RSA against a vendor's
 /// key distribution service. That is not feasible in the EVM at any sane gas price, and a
 /// contract that claims to do it is worth reading very carefully.

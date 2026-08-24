@@ -1,0 +1,7 @@
+{
+  "PAYMENT_TX": "0x9f6c9980eea0878b4eba27c677fc8add83dd32fc5c2185dbe76506cce35f33e1",
+  "PAYMENT_BLOCK": "11,558,244",
+  "SETTLE_TX": "0xc77cf096bc552f1c9eb2d1f407bf11e211aad58708325a23f92915c05621426a",
+  "GAS": "468,426",
+  "SIGNER_LINE": "<b>An attested Confidential Space enclave</b> on AMD SEV, secure boot on, debug disabled since boot. Its measurement is the container image digest, <span class=\"mono\">0xc0a8e85a\u20260</span>, and the Google-signed token that says so is committed in the repository."
+}

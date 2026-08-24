@@ -230,4 +230,8 @@ say "That waits for the Attestcoin oracle to attest the Sepolia block the paymen
 say "which is 7 to 9 minutes, then submits the inclusion proof and the signed verdict together"
 say "in one Creditcoin transaction. It prints every stage as it goes."
 say ""
-say "It will warn loudly that the signer is unattested. That warning is correct and deliberate."
+if [ -n "$ENCLAVE_URL" ]; then
+    say "The worker will call the enclave over HTTP, so no unattested warning appears. It is not true."
+else
+    say "It will warn loudly that the signer is unattested. That warning is correct and deliberate."
+fi

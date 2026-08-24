@@ -66,8 +66,34 @@ gcloud artifacts repositories describe "$REPO" --location "$REGION" --project "$
     --location "$REGION" --project "$PROJECT_ID" || die "could not create artifact repository"
 }
 
-docker build --provenance=false --sbom=false --platform linux/amd64 -t "$REF" "$here" \
-  || die "image build failed"
+# buildx, not plain docker build. On an Apple Silicon machine, plain `docker build --platform
+# linux/amd64` can reuse the arm64 layers it built a moment ago and stamp them amd64, producing an
+# image that claims to be amd64 and contains aarch64 binaries. Confidential Space then boots it,
+# the entrypoint dies with an exec format error, the launcher stops, and the VM terminates with no
+# log at all. That is exactly the failure this build now refuses to ship.
+docker buildx build --provenance=false --sbom=false --platform linux/amd64 \
+  --load -t "$REF" "$here" \
+  || die "amd64 build failed. If buildx is unavailable, run: docker buildx create --use"
+
+say "3b. Prove the image really is amd64, by running it"
+# Checking the metadata is not enough, because the metadata is exactly what gets faked. Run the
+# thing and ask it. Docker Desktop executes amd64 images on Apple Silicon through Rosetta, so a
+# genuine amd64 image answers x64 here and a mislabelled one fails to exec at all.
+arch_reported="$(docker run --rm --platform linux/amd64 "$REF" \
+    node -e 'process.stdout.write(process.arch)' 2>/dev/null || true)"
+if [ "$arch_reported" != "x64" ]; then
+    die "the image answered process.arch='$arch_reported', not 'x64', so it is not a working amd64 image and Confidential Space runs amd64 only. Nothing has been pushed.
+
+  If it answered 'arm64', the build reused this machine's own layers. Try:
+      docker buildx create --use
+      docker buildx build --platform linux/amd64 --load -t $REF $here
+
+  If it answered nothing at all, this machine may not be able to execute amd64 images. Turn on
+  Rosetta in Docker Desktop, Settings, General, 'Use Rosetta for x86_64/amd64 emulation', and
+  run this again."
+fi
+echo "  runs as x64 under linux, so it will exec on the VM"
+
 docker push "$REF" || die "push failed"
 
 say "4. Confirm it is a single-platform manifest"

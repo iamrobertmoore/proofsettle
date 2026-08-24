@@ -41,6 +41,20 @@ const ATTEST_TIMEOUT_MS = 25 * 60 * 1000;
 async function main() {
   const mode = process.argv[2] ?? 'watch';
 
+  // Validated before anything touches the network or the environment, so a mistyped or pasted
+  // placeholder fails in the first millisecond with its own name in the message. Left to the RPC,
+  // a malformed hash comes back as ethers' "could not coalesce error", which names nothing.
+  if (mode === 'once') {
+    const arg = process.argv[3];
+    if (!arg) throw new Error('usage: settle.ts once <sepolia_tx_hash>');
+    if (!/^0x[0-9a-fA-F]{64}$/.test(arg)) {
+      throw new Error(
+        `"${arg}" is not a transaction hash. It has to be 0x followed by 64 hex characters. ` +
+          'If it looks like a placeholder, it is one: paste the hash first-settlement.sh printed.'
+      );
+    }
+  }
+
   const cc = new JsonRpcProvider(CC_RPC);
   const sepolia = new JsonRpcProvider(SEPOLIA_RPC);
   const wallet = new Wallet(need('WORKER_PRIVATE_KEY'), cc);
@@ -64,8 +78,7 @@ async function main() {
   console.log(`  balance     ${ethers.formatEther(bal)} CTC\n`);
 
   if (mode === 'once') {
-    const txHash = process.argv[3];
-    if (!txHash) throw new Error('usage: settle.ts once <sepolia_tx_hash>');
+    const txHash = process.argv[3]!;
     await settleOne(txHash, { cc, sepolia, settlement, info, prover });
     return;
   }

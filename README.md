@@ -90,7 +90,7 @@ encodes compilation paths and so varies by machine.
 
 ## What this does not do
 
-**The registry does not verify hardware attestation on chain.** Verifying an AMD SEV-SNP or Google
+**The registry does not verify hardware attestation on chain.** Verifying an AMD SEV or Google
 Confidential Space attestation means walking an X.509 chain and doing RSA against a vendor's key
 distribution service. That is not feasible in the EVM at any sane gas price, and a contract that
 claims to do it is worth reading very carefully.
@@ -213,37 +213,44 @@ contract during the hackathon. Saying so is cheaper than having someone wonder.
 
 ## One settlement, end to end, on the live network
 
-A real job, paid for on Ethereum Sepolia, settled on Creditcoin against the Attestcoin oracle.
-Both transactions are public.
+A real job, paid for on Ethereum Sepolia, settled on Creditcoin against the Attestcoin oracle, with
+the result signed inside an attested Confidential Space enclave. Both transactions are public.
 
 | | |
 |---|---|
-| Payment | [`0x75883943…4f69`](https://sepolia.etherscan.io/tx/0x75883943a9e57f7ba3c4b96212d02afd4350532f7565530cc5644b1cb5fa4f69) on Sepolia, block 11,556,369, tx index 120 |
-| Settlement | [`0x85e9b259…33a0b`](https://creditcoin-testnet.blockscout.com/tx/0x85e9b25947f5fbdef4cd2934eb14da958f28c55bc9631891cf91979637733a0b) on Creditcoin, block 5,365,240 |
-| Job id | `0xe11025fb566447366b4b6ca32038bb522fce3c35f72bf903c346f7c30dfc23ac` |
-| Cost to settle | 465,290 gas at 0.5 gwei, so 0.000233 CTC |
-| Waiting for attestation | 6 minutes 30 seconds, inside the 7 to 9 minute band measured beforehand |
+| Payment | [`0x9f6c9980…f33e1`](https://sepolia.etherscan.io/tx/0x9f6c9980eea0878b4eba27c677fc8add83dd32fc5c2185dbe76506cce35f33e1) on Sepolia, block 11,558,244, tx index 175 |
+| Settlement | [`0xc77cf096…1426a`](https://creditcoin-testnet.blockscout.com/tx/0xc77cf096bc552f1c9eb2d1f407bf11e211aad58708325a23f92915c05621426a) on Creditcoin, block 5,366,783 |
+| Job id | `0xbd3c16183f8a976424135c8b43344ae65a2a590fa125bdc276ff755ea8125c3a` |
+| Enclave | `0xC7561c7e2809346fAffDf3B344FD921FDF98F65f`, measurement `0xc0a8e85a53c13a607b108683cd75ad896047a2b526d8ef64065bb27aac1396d0` |
+| Cost to settle | 468,426 gas at 0.5 gwei, so 0.000234 CTC |
 
 The four logs that transaction emitted are the whole argument in order, and anyone can read them
 off chain:
 
-1. `TransactionVerified(1, 11556369, 120)` from the Attestcoin verifier precompile at
+1. `TransactionVerified(1, 11558244, 175)` from the Attestcoin verifier precompile at
    `0x…0FD2`. The protocol itself, not this project, attesting that the Sepolia payment is real.
-2. `ProofConsumed(queryId, 11556369, 120)` from `ComputeSettlement`, marking that query spent.
-   `consumedQueries(0x6a791d27…12aaf)` reads `true` on chain now, so the same proof cannot settle
-   a second time.
+2. `ProofConsumed(queryId, 11558244, 175)` from `ComputeSettlement`, marking that query spent, so
+   the same proof cannot settle a second time.
 3. `JobSettled(jobId, provider, enclave, …)` carrying the enclave signing key that the registry
    confirmed was permitted by *the buyer's own policy*, taken from the proven Sepolia event.
-4. `Transfer(0x0, provider, 1e15)` from `ComputeCredit`. Total supply is exactly 1e15, matching
-   the 0.001 ETH locked on Sepolia and nothing more.
+4. `Transfer(0x0, provider, 1e15)` from `ComputeCredit`, matching the 0.001 ETH locked on Sepolia
+   and nothing more.
 
 Both proofs were checked in that single transaction. Neither half could have settled without the
 other.
 
-**The signer in that run was a development key, not an attested enclave, and the system says so
-out loud.** It is registered under a measurement whose preimage is the string
-`proofsettle.development-signer.v1 NOT-ATTESTED`, and the worker prints a warning on every run
-that uses it. Nothing in this repository presents that mode as evidence of hardware attestation.
+**The enclave is real.** The measurement bound on chain is the container image digest itself, so
+there is no indirection to take on trust: pull the image, read its digest, compare. The
+Google-signed attestation token that asserts it is committed at `enclave/attestation.jwt`, and
+
+```bash
+node enclave/verify-token.mjs enclave/attestation.jwt
+```
+
+verifies it against Google's published keys and prints what it actually claims: `GCP_AMD_SEV`,
+secure boot on, and `dbgstat: disabled-since-boot`, which means a production Confidential Space
+image rather than the debug one. The token expires, which is worth saying plainly: an expired token
+is a historical record of what was running, not a live proof that it still is.
 
 ## Verified against the live network
 

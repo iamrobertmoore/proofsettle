@@ -35,3 +35,9 @@ jobs:
 
       - name: Mutation check
         run: ./script/mutation-check.sh
+
+      # The deployment scripts are tested too. Not by creating infrastructure, but by exercising
+      # the decision they make against a scripted stand-in for gcloud and a fake enclave serving a
+      # real, locally signed attestation token.
+      - name: Launch decision
+        run: ./enclave/deploy/test/run.sh

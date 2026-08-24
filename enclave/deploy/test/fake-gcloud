@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Scripted stand-in for gcloud, so the launch script's decision logic can be exercised without
+# creating anything. Behaviour is driven by files in /tmp/h/state.
+st=/tmp/proofsettle-launch-test
+args="$*"
+case "$args" in
+  "config set project"*)                 exit 0 ;;
+  "iam service-accounts describe"*)      exit 0 ;;
+  "artifacts docker images describe"*impersonate*) echo "PERMISSION_DENIED: cannot impersonate"; exit 1 ;;
+  "artifacts docker images describe"*)   cat "$st/digest"; exit 0 ;;
+  "artifacts repositories get-iam-policy"*) echo '{"bindings":[{"role":"roles/artifactregistry.reader","members":["serviceAccount:proofsettle-enclave@p.iam.gserviceaccount.com"]}]}'; exit 0 ;;
+  "projects get-iam-policy"*)            echo "roles/artifactregistry.reader"; exit 0 ;;
+  "compute instances list"*)             cat "$st/existing_zone" 2>/dev/null; exit 0 ;;
+  "compute instances describe"*natIP*)   cat "$st/existing_ip" 2>/dev/null; exit 0 ;;
+  "compute instances describe"*"value(id)"*) echo 123456; exit 0 ;;
+  "compute instances describe"*status*)  echo RUNNING; exit 0 ;;
+  "compute instances delete"*)           echo deleted >> "$st/deletes"; : > "$st/existing_zone"; exit 0 ;;
+  "compute firewall-rules describe"*)    exit 1 ;;
+  "compute firewall-rules create"*)      exit 0 ;;
+  "compute instances create"*)           echo "create attempted" >> "$st/creates"; exit 1 ;;
+  "logging read"*)                       exit 0 ;;
+  *) echo "UNSTUBBED gcloud $args" >&2; exit 1 ;;
+esac

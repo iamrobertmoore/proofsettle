@@ -26,7 +26,7 @@ say "0. Tools"
 command -v gcloud >/dev/null || die "gcloud not found. Install the Google Cloud CLI: https://cloud.google.com/sdk/docs/install-sdk"
 command -v docker >/dev/null || die "docker not found. Install Docker Desktop and start it: https://docs.docker.com/desktop/setup/install/mac-install/"
 docker info >/dev/null 2>&1 || die "docker is installed but the daemon is not running. Start Docker Desktop and wait for the whale icon to settle."
-echo "  gcloud $(gcloud version --format='value(\"Google Cloud SDK\")' 2>/dev/null | head -1)"
+echo "  $(gcloud version 2>/dev/null | head -1)"
 echo "  docker $(docker version --format '{{.Client.Version}}' 2>/dev/null)"
 
 say "1. Logged in"
@@ -88,6 +88,17 @@ for role in roles/confidentialcomputing.workloadUser roles/logging.logWriter; do
         --member "serviceAccount:$SA" --role "$role" --quiet >/dev/null \
         || die "could not grant $role"
 done
+
+# The one that is easy to miss, and whose absence is invisible until a VM has already been
+# created. Your own account can push the image, so the repository looks fine, but the workload
+# runs as this service account and it is a different principal entirely. Without this the
+# launcher gets 403 Forbidden fetching a pull token, gives up, and shuts the VM down.
+# Granted on the repository rather than the project, because that is all it needs.
+echo "  granting       roles/artifactregistry.reader on $REPO"
+gcloud artifacts repositories add-iam-policy-binding "$REPO" \
+    --location "$REGION" \
+    --member "serviceAccount:$SA" --role roles/artifactregistry.reader --quiet >/dev/null \
+    || die "could not grant artifactregistry.reader on $REPO"
 
 say "7. Docker can push to Artifact Registry"
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet >/dev/null \

@@ -1,0 +1,468 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ProofSettle</title>
+<style>
+  :root{
+    --bg:#FBFAF8; --ink:#11161C; --mid:#39424E; --muted:#6B7482;
+    --rule:#E5E1DA; --accent:#1B6B66; --accent-soft:#E6F0EF; --warm:#B4552F;
+    --sans:"Carlito","Liberation Sans","DejaVu Sans",sans-serif;
+    --mono:"Liberation Mono","DejaVu Sans Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#fff}
+  body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  .slide{
+    width:1280px;height:720px;background:var(--bg);position:relative;
+    padding:58px 76px 62px;display:flex;flex-direction:column;overflow:hidden;
+    page-break-after:always;break-after:page;
+  }
+  .slide:last-child{page-break-after:auto;break-after:auto}
+
+  .eyebrow{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:52px;line-height:1.06;letter-spacing:-.02em;font-weight:700;margin-top:14px}
+  h2{font-size:38px;line-height:1.12;letter-spacing:-.015em;font-weight:700;margin-top:10px}
+  h3{font-size:19px;font-weight:700;letter-spacing:-.005em}
+  p{font-size:17.5px;line-height:1.56;color:var(--mid)}
+  .lead{font-size:22px;line-height:1.45;color:var(--ink)}
+  .small{font-size:15px;line-height:1.5;color:var(--muted)}
+  .mono{font-family:var(--mono);font-size:13.5px;letter-spacing:-.01em}
+  b,strong{color:var(--ink);font-weight:700}
+  em{font-style:normal;color:var(--accent);font-weight:700}
+
+  .body{margin-top:30px;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+  .body.cols{display:grid;align-content:center}
+  .foot{position:absolute;left:76px;right:76px;bottom:28px;display:flex;justify-content:space-between;
+        align-items:center;font-size:12.5px;color:var(--muted);border-top:1px solid var(--rule);padding-top:12px}
+  .foot .n{font-variant-numeric:tabular-nums}
+
+  .cols{display:grid;gap:34px}
+  .c2{grid-template-columns:1fr 1fr}
+  .c3{grid-template-columns:repeat(3,1fr)}
+  .c4{grid-template-columns:repeat(4,1fr)}
+  .c-7-5{grid-template-columns:1.35fr 1fr}
+
+  .card{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:22px 24px}
+  .card h3{margin-bottom:8px}
+  .card p{font-size:15.5px;line-height:1.5}
+
+  .stat{display:flex;flex-direction:column;gap:4px}
+  .stat .v{font-size:46px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--ink)}
+  .stat .k{font-size:14px;line-height:1.35;color:var(--muted)}
+
+  .rail{display:flex;align-items:stretch;gap:0;margin-top:6px}
+  .rail .step{flex:1;padding:20px 20px 18px;background:#fff;border:1px solid var(--rule);position:relative}
+  .rail .step:first-child{border-radius:12px 0 0 12px}
+  .rail .step:last-child{border-radius:0 12px 12px 0}
+  .rail .step + .step{border-left:none}
+  .rail .where{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .rail .what{font-size:16px;font-weight:700;margin-top:9px;line-height:1.3}
+  .rail .note{font-size:13.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+
+  .ladder{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .rung{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:18px;
+        padding:14px 20px;border:1px solid var(--rule);border-radius:10px;background:#fff}
+  .rung .lv{font-size:17px;font-weight:700;color:var(--muted)}
+  .rung .tx{font-size:16.5px;color:var(--mid)}
+  .rung .tag{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .rung.us{border-color:var(--accent);background:var(--accent-soft)}
+  .rung.us .lv,.rung.us .tx{color:var(--ink)}
+  .rung.us .tx{font-weight:700}
+  .rung.us .tag{color:var(--accent)}
+
+  .kv{width:100%;border-collapse:collapse}
+  .kv td{padding:9px 0;border-bottom:1px solid var(--rule);font-size:15px;vertical-align:top}
+  .kv td:first-child{color:var(--muted);width:190px;padding-right:18px}
+  .kv tr:last-child td{border-bottom:none}
+
+  .quote{font-size:27px;line-height:1.38;letter-spacing:-.012em;font-weight:700}
+  .tick{color:var(--accent);font-weight:700}
+  .warn{color:var(--warm);font-weight:700}
+  .chiprow{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .chip{font-size:13.5px;border:1px solid var(--rule);background:#fff;border-radius:999px;padding:7px 15px;color:var(--mid)}
+  .bars{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+  .bar{display:grid;grid-template-columns:74px 1fr 62px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+  .bar .t{height:11px;background:#EDEAE4;border-radius:3px;overflow:hidden}
+  .bar .f{height:100%;background:var(--accent);opacity:.85}
+  .bar .n{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="eyebrow">BUIDL CTC 2026 Fall &middot; AI track</div>
+  <h1 style="margin-top:26px;font-size:76px">ProofSettle</h1>
+  <p class="lead" style="margin-top:26px;max-width:900px">
+    A settlement rail that pays for off-chain AI compute only when <b>two independent proofs, of two
+    different kinds, agree inside a single transaction.</b>
+  </p>
+  <div class="chiprow" style="margin-top:34px">
+    <span class="chip">Live on Creditcoin CC3 testnet</span>
+    <span class="chip">Real Attestcoin proofs</span>
+    <span class="chip">Real TEE, Google Confidential Space, AMD SEV</span>
+    <span class="chip">Verifiable in a browser</span>
+  </div>
+  <div class="foot"><span>Robert Moore &middot; solo entrant &middot; github.com/iamrobertmoore/proofsettle</span><span class="n">1</span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="eyebrow">Target user</div>
+  <h2>Amara prices loans for people with no credit file</h2>
+  <div class="body cols c-7-5">
+    <div>
+      <p class="lead" style="margin-bottom:18px">
+        She runs risk at a thirty-person lender in Lagos making working capital loans to small traders.
+        <b>Two thirds of her applicants have no credit history at all.</b>
+      </p>
+      <p style="margin-bottom:14px">
+        The only way to price them is to run a model over what they do have: mobile money records,
+        supplier invoices, till takings. She has no GPUs and no ML team, so she would have to buy that
+        inference from someone else.
+      </p>
+      <p style="margin-bottom:14px">
+        She cannot. It is her borrowers' data, she is regulated on it, and a provider's promise not to
+        keep a copy is only a promise. And if she bought it anyway, she would be paying up front for a
+        result she has no way to check.
+      </p>
+      <p><b>So she does not. The loans do not get made.</b></p>
+    </div>
+    <div>
+      <div class="card" style="background:var(--accent-soft);border-color:var(--accent)">
+        <h3 style="color:var(--accent)">What she needs</h3>
+        <p style="margin-top:10px">
+          To name the exact code she is willing to trust, at the moment she pays, and have that
+          enforced by something other than a supplier's word.
+        </p>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h3>The other side of the rail</h3>
+        <p style="margin-top:10px">
+          The provider selling her that compute has the mirror problem: today they cannot get paid
+          without asking a stranger to trust them first.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">2</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="eyebrow">The problem</div>
+  <h2>Two facts have to be true, and they live on different systems</h2>
+  <div class="body">
+    <div class="cols c2">
+      <div class="card">
+        <h3>Did the payment really happen?</h3>
+        <p style="margin-top:10px">It happened on another chain. The contract that would release the
+        work cannot see it, so somebody has to be trusted to say so.</p>
+      </div>
+      <div class="card">
+        <h3>Did the right code really run?</h3>
+        <p style="margin-top:10px">It ran off chain, in someone else's data centre. The buyer gets an
+        answer and a bill, and no way to tell which model produced either.</p>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:38px;max-width:1000px">
+      Solve one and you still have the other. <b>Most designs solve one</b>, then close the gap with a
+      trusted coordinator, which is the thing everyone was trying to remove.
+    </p>
+    <p style="margin-top:16px;max-width:1000px">
+      Both usual fixes replace a cryptographic question with a reputational one: trust the provider, or
+      trust an oracle operator who watched them.
+    </p>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">3</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="eyebrow">How it works</div>
+  <h2>Compose two proofs, settle on the pair</h2>
+  <div class="body">
+    <div class="rail">
+      <div class="step">
+        <div class="where">Ethereum Sepolia</div>
+        <div class="what">Amara pays, and names the enclave build she will accept</div>
+        <div class="note">The requirement travels inside the payment event itself.</div>
+      </div>
+      <div class="step">
+        <div class="where">Off chain</div>
+        <div class="what">A TEE runs the job and signs the result with its verdict</div>
+        <div class="note">Google Confidential Space, AMD SEV. The key never leaves the enclave.</div>
+      </div>
+      <div class="step">
+        <div class="where">Attestcoin oracle</div>
+        <div class="what">Proves the Sepolia payment to Creditcoin</div>
+        <div class="note">Merkle inclusion plus continuity. No oracle operator.</div>
+      </div>
+      <div class="step">
+        <div class="where">Creditcoin</div>
+        <div class="what">Both proofs verified in one transaction, then money moves</div>
+        <div class="note">Accepted pays the provider, rejected refunds, partial splits.</div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:34px;max-width:1080px">
+      The proven foreign event does not just carry a fact. <b>It carries the buyer's policy</b>, and the
+      contract on Creditcoin enforces that policy against a second, unrelated cryptographic system.
+    </p>
+    <p style="margin-top:14px;max-width:1080px">Neither half settles alone.</p>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">4</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="eyebrow">Depth of Attestcoin utilisation</div>
+  <h2>Most integrations ask the oracle for a fact</h2>
+  <div class="body">
+    <div class="ladder">
+      <div class="rung"><span class="lv">1</span><span class="tx">Call the prover, display a proof. The oracle is a widget.</span><span class="tag">Shallow</span></div>
+      <div class="rung"><span class="lv">2</span><span class="tx">Burn on Sepolia, prove, mint on Creditcoin.</span><span class="tag">The tutorial</span></div>
+      <div class="rung"><span class="lv">3</span><span class="tx">Prove a domain event and drive real application logic from it.</span><span class="tag">Good</span></div>
+      <div class="rung us"><span class="lv">4</span><span class="tx">The proven event carries policy, enforced against a second independent proof system.</span><span class="tag">ProofSettle</span></div>
+    </div>
+    <p style="margin-top:26px;max-width:1090px">
+      Levels 1 to 3 all treat the oracle as a source of facts. At level 4 the contract holds no opinion
+      of its own: it reads <span class="mono">requiredMeasurement</span> out of the proven Sepolia event
+      and enforces exactly that. <b>Change what the buyer asked for and the settlement rule changes with
+      it, with no redeploy and no admin key.</b>
+    </p>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="eyebrow">Live today</div>
+  <h2>A real job, paid on Sepolia, settled on Creditcoin</h2>
+  <div class="body cols c-7-5">
+    <div>
+      <table class="kv">
+        <tr><td>Payment</td><td class="mono">__PAYMENT_TX__<br><span class="small">Sepolia, block __PAYMENT_BLOCK__</span></td></tr>
+        <tr><td>Settlement</td><td class="mono">__SETTLE_TX__<br><span class="small">Creditcoin CC3, __GAS__ gas, 0.000233 CTC</span></td></tr>
+        <tr><td>Settlement contract</td><td class="mono">0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06</td></tr>
+        <tr><td>Enclave registry</td><td class="mono">0xAc014b7Df7f9b2dA343d895F22a392c655338bFb</td></tr>
+        <tr><td>Escrow, Sepolia</td><td class="mono">0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40</td></tr>
+        <tr><td>Signed by</td><td>__SIGNER_LINE__</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Four logs, in this order</h3>
+        <p style="margin-top:12px">
+          <b>1.</b> <span class="mono">TransactionVerified</span> from the Attestcoin verifier precompile
+          itself. The protocol, not this project, attesting the payment is real.<br><br>
+          <b>2.</b> <span class="mono">ProofConsumed</span>, marking that query spent so it cannot settle
+          twice.<br><br>
+          <b>3.</b> <span class="mono">JobSettled</span>, carrying the enclave the buyer's own policy
+          permitted.<br><br>
+          <b>4.</b> <span class="mono">Transfer</span>, minting exactly what was locked and nothing more.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Anyone can re-run every one of these checks in a browser, with no backend</span><span class="n">6</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="eyebrow">Measured, not asserted</div>
+  <h2>How much of the Attestcoin oracle is real application use</h2>
+  <div class="body">
+    <div class="cols c4" style="gap:26px">
+      <div class="stat"><span class="v">142</span><span class="k">contracts called the verifier in 17.4 days</span></div>
+      <div class="stat"><span class="v">93.8%</span><span class="k">of that traffic came from just two of them</span></div>
+      <div class="stat"><span class="v">134<span style="font-size:24px;color:var(--muted)">/142</span></span><span class="k">have exactly one sending address</span></div>
+      <div class="stat"><span class="v">11</span><span class="k">senders on the most-used contract, which is the tutorial</span></div>
+    </div>
+    <div class="cols c-7-5" style="margin-top:34px">
+      <div>
+        <p>
+          Before building on a protocol it is worth knowing who else is, so I measured it rather than
+          guessing: every event the verifier precompile emitted on CC3 testnet across 100,000 blocks,
+          complete coverage, no sampling, reproducible with <span class="mono">script/measure.ts</span>.
+        </p>
+        <p style="margin-top:14px">
+          Almost every contract there is exercised only by the address that deployed it. That is
+          builders testing their own work, not users using it. <b>Which is the headroom this was built
+          for, and I would rather say so than imply a crowd.</b>
+        </p>
+      </div>
+      <div class="bars">
+        <div class="bar"><span>today</span><span class="t"><span class="f" style="width:0.4%"></span></span><span class="n">19</span></div>
+        <div class="bar"><span>1d ago</span><span class="t"><span class="f" style="width:99%"></span></span><span class="n">4,737</span></div>
+        <div class="bar"><span>2d ago</span><span class="t"><span class="f" style="width:100%"></span></span><span class="n">4,790</span></div>
+        <div class="bar"><span>3d ago</span><span class="t"><span class="f" style="width:1.4%"></span></span><span class="n">67</span></div>
+        <div class="bar"><span>4d ago</span><span class="t"><span class="f" style="width:1.1%"></span></span><span class="n">52</span></div>
+        <div class="bar"><span>5d ago</span><span class="t"><span class="f" style="width:1.3%"></span></span><span class="n">60</span></div>
+        <div class="bar"><span>6d ago</span><span class="t"><span class="f" style="width:1.7%"></span></span><span class="n">83</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">7</span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="eyebrow">Evidence</div>
+  <h2>A green test suite is not evidence</h2>
+  <div class="body">
+    <div class="cols c3" style="gap:26px">
+      <div class="stat"><span class="v">49</span><span class="k">tests, every guarantee paired with a negative case</span></div>
+      <div class="stat"><span class="v">11<span style="font-size:24px;color:var(--muted)">/11</span></span><span class="k">mutations killed. Each removes one guarantee and proves the test defending it goes red</span></div>
+      <div class="stat"><span class="v">2</span><span class="k">independent implementations of the signing digest, checked against each other</span></div>
+    </div>
+    <div class="cols c2" style="margin-top:34px">
+      <div class="card">
+        <h3>The test that matters most</h3>
+        <p style="margin-top:10px">Anyone can deploy their own escrow, emit a perfectly well formed
+        payment event naming themselves as provider for any amount, and obtain a completely genuine
+        Attestcoin proof of it. <b>The proof is real. The settlement would be theft.</b> Pinning the
+        emitting contract is what makes a true proof also a relevant one.</p>
+      </div>
+      <div class="card">
+        <h3>Checked against the live network, not the docs</h3>
+        <p style="margin-top:10px">
+          <span class="tick">&#10003;</span> A real proof verifies on chain: the precompile returns true<br>
+          <span class="tick">&#10003;</span> A corrupted proof reverts with "Merkle proof validation failed"<br>
+          <span class="tick">&#10003;</span> Sepolia is chain key 1, read from the ChainInfo precompile<br>
+          <span class="tick">&#10003;</span> Attestation runs 7 to 9 minutes behind, measured, not quoted
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">8</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="eyebrow">The trust boundary</div>
+  <h2>What this does not do</h2>
+  <div class="body cols c2">
+    <div class="card">
+      <h3>No hardware attestation on chain</h3>
+      <p style="margin-top:10px">
+        Verifying an AMD SEV or Confidential Space attestation means walking an X.509 chain and doing
+        RSA against a vendor's key service. That is not feasible in the EVM, and a contract claiming to
+        do it is worth reading closely.
+      </p>
+      <p style="margin-top:12px">
+        The registry records the binding, a hash of the attestation document and where to fetch it. The
+        contract enforces the binding. <b>Anyone can recheck the evidence and disagree in public.</b>
+      </p>
+    </div>
+    <div class="card">
+      <h3>The rail is one-directional today</h3>
+      <p style="margin-top:10px">
+        Attestcoin carries attested data into Creditcoin. Writability, which would carry a settlement
+        receipt back out, is out of scope this season, as the protocol team confirmed at the kickoff AMA.
+      </p>
+      <p style="margin-top:12px">
+        So the return leg is a plainly labelled conventional relayer, and the buyer's refund is gated on
+        elapsed time rather than on a receipt. <b>Writability is the roadmap step that removes the last
+        trusted component.</b>
+      </p>
+    </div>
+  </div>
+  <div class="foot"><span>Stated here because a judge will find it anyway, and it is better found from me</span><span class="n">9</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="eyebrow">Who this brings to Creditcoin</div>
+  <h2>Escrow against verified delivery is a credit instrument</h2>
+  <div class="body">
+    <p class="lead" style="max-width:1080px">
+      Creditcoin exists because credit cannot flow to people whose creditworthiness cannot be verified.
+      ProofSettle is the same shape applied to work instead of to borrowers.
+      <b>Amara is not an incidental example: the reason her borrowers cannot be scored is a compute
+      problem, not a credit one.</b>
+    </p>
+    <div class="cols c3" style="margin-top:30px">
+      <div class="card">
+        <h3>Lenders scoring thin files</h3>
+        <p style="margin-top:9px">Exactly Creditcoin's existing constituency, blocked on a step that
+        happens off chain and cannot be checked.</p>
+      </div>
+      <div class="card">
+        <h3>Compute providers</h3>
+        <p style="margin-top:9px">Independent GPU and TEE operators who cannot prove they ran what they
+        claim, and are paid on trust or not at all.</p>
+      </div>
+      <div class="card">
+        <h3>Agent-to-agent payments</h3>
+        <p style="margin-top:9px">An autonomous buyer cannot read a reputation score. It can read a
+        signature from a named enclave build.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">10</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="eyebrow">Roadmap</div>
+  <h2>Where this goes after the hackathon</h2>
+  <div class="body">
+    <table class="kv" style="margin-top:4px">
+      <tr><td><b style="color:var(--accent)">Shipped</b></td><td><b>Two-proof settlement live on CC3 testnet</b>, with a public page anyone can verify against<br><span class="small">Deep Attestcoin use that is not the tutorial</span></td></tr>
+      <tr><td><b>Next</b></td><td><b>Attestcoin writability closes the loop</b>, replacing the conventional return leg<br><span class="small">Removes the last trusted component</span></td></tr>
+      <tr><td><b>Next</b></td><td><b>Settle in USD1 and USDT</b> through existing PenguinSwap liquidity<br><span class="small">Real value in the existing economy, not a bespoke token</span></td></tr>
+      <tr><td><b>Then</b></td><td><b>More source chains</b> as Attestcoin adds them, same contract<br><span class="small">Creditcoin becomes the settlement layer for multi-chain compute</span></td></tr>
+      <tr><td><b>Then</b></td><td><b>A provider marketplace</b>: enclave builds compete on measurements<br><span class="small">A reason for compute operators to hold and spend CTC</span></td></tr>
+      <tr><td><b>The test that counts</b></td><td><b>One real lender, one real scoring model, mainnet</b><br><span class="small">Everything above is scaffolding for this</span></td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">11</span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <div class="eyebrow">Execution</div>
+  <h2>Solo, and shipping is the habit</h2>
+  <div class="body cols c2">
+    <div class="card">
+      <h3>Recent results</h3>
+      <p style="margin-top:10px">
+        Third of 190 submissions at KeeperHub Agents Onchain, from a 512-hacker field, five weeks ago.<br><br>
+        Multiple packages published to npm with OIDC trusted publishing and SLSA provenance, one
+        officially verified by its vendor.<br><br>
+        A Chrome extension live on the Web Store.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Why the hard half was cheap for me</h3>
+      <p style="margin-top:10px">
+        This is the third system I have built that joins a hardware attestation to an on-chain registry.
+        The first checked Confidential Space attestations against a Flare registry entirely in the
+        browser. The second pointed the same verifier at a document store.
+      </p>
+      <p style="margin-top:12px"><b>Declared plainly:</b> the verification pattern is one I already
+      understand. The Solidity here is written fresh for this event, and the commit history shows it
+      happening.</p>
+    </div>
+  </div>
+  <div class="foot"><span>ProofSettle</span><span class="n">12</span></div>
+</section>
+
+<!-- 13 -->
+<section class="slide" style="justify-content:center">
+  <div class="eyebrow">In one line</div>
+  <p class="quote" style="margin-top:24px;max-width:1040px">
+    Most Attestcoin integrations ask the oracle for a fact.<br>
+    <span style="color:var(--accent)">This one asks it for a policy</span>, and enforces that policy
+    against a second, unrelated cryptographic system.
+  </p>
+  <p class="lead" style="margin-top:30px;max-width:1000px">
+    So that Amara can buy an inference from someone she has no reason to trust, and pay only when both
+    proofs agree she got what she paid for.
+  </p>
+  <div class="chiprow" style="margin-top:34px">
+    <span class="chip">Deployed on CC3 testnet</span>
+    <span class="chip">One job settled end to end</span>
+    <span class="chip">49 tests, 11 mutations killed</span>
+    <span class="chip">Verifiable by anyone, in a browser</span>
+  </div>
+  <div class="foot"><span>Robert Moore &middot; github.com/iamrobertmoore/proofsettle</span><span class="n">13</span></div>
+</section>

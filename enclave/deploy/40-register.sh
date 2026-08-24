@@ -79,7 +79,17 @@ EVIDENCE_HASH="$(node enclave/verify-token.mjs enclave/attestation.jwt | sed -n 
 [ -n "$MEASUREMENT" ] || die "could not read a measurement out of the token"
 [ -n "$EVIDENCE_HASH" ] || die "could not compute the evidence hash"
 
-EVIDENCE_URI="${ENCLAVE_EVIDENCE_URI:-https://raw.githubusercontent.com/iamrobertmoore/proofsettle/main/enclave/attestation.jwt}"
+# Deliberately NOT ${ENCLAVE_EVIDENCE_URI:-...}. That variable is already in .env, left there by
+# script/first-settlement.sh when it registered a development key, and inheriting it wrote
+# "urn:proofsettle:development-signer:not-attested" into the on-chain record of a genuinely
+# attested enclave. Registration is permanent in this registry, so that mistake cannot be edited
+# afterwards. Default fresh every time, and override only through a variable that means it.
+EVIDENCE_URI="${EVIDENCE_URI_OVERRIDE:-https://raw.githubusercontent.com/iamrobertmoore/proofsettle/main/enclave/attestation.jwt}"
+
+case "$EVIDENCE_URI" in
+    *not-attested*|*development-signer*)
+        die "the evidence URI says this is a development signer, but the token says it is attested. Refusing to write that contradiction to a permanent record. Unset EVIDENCE_URI_OVERRIDE and run again." ;;
+esac
 
 say "3. Register the binding on Creditcoin"
 echo "  registry     $ENCLAVE_REGISTRY_ADDRESS"
@@ -96,7 +106,24 @@ active="$(cast call "$ENCLAVE_REGISTRY_ADDRESS" "isActiveSigner(bytes32,address)
     "$MEASUREMENT" "$SIGNER" --rpc-url "$CREDITCOIN_RPC_URL")"
 
 if [ "$active" = "true" ]; then
-    echo "  already registered and active"
+    # Do not print the URI we would have written and then skip writing it. That reads as though it
+    # was registered with this value when the chain may hold something quite different, and this
+    # registry is permanent, so the difference cannot be corrected in place.
+    onchain="$(cast call "$ENCLAVE_REGISTRY_ADDRESS" \
+        "enclaveOf(bytes32)((bytes32,address,bytes32,string,uint64,uint64))" "$MEASUREMENT" \
+        --rpc-url "$CREDITCOIN_RPC_URL" 2>/dev/null || true)"
+    onchain_uri="$(printf '%s' "$onchain" | sed -n 's/.*"\(.*\)".*/\1/p')"
+    echo "  already registered and active, nothing was written"
+    echo "  evidence on chain  ${onchain_uri:-could not read it back}"
+    if [ -n "$onchain_uri" ] && [ "$onchain_uri" != "$EVIDENCE_URI" ]; then
+        echo ""
+        echo "  WARNING: the record on chain does not carry the evidence URI above."
+        echo "    on chain  $onchain_uri"
+        echo "    intended  $EVIDENCE_URI"
+        echo "  register() is permanent and a measurement cannot be re-registered. To correct it,"
+        echo "  change the enclave so its image digest changes, launch that, and register the new"
+        echo "  measurement. Revoke this one to record why it was superseded."
+    fi
 else
     cast send "$ENCLAVE_REGISTRY_ADDRESS" "register(bytes32,address,bytes32,string)" \
         "$MEASUREMENT" "$SIGNER" "$EVIDENCE_HASH" "$EVIDENCE_URI" \

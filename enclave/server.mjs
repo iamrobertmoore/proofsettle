@@ -1,7 +1,7 @@
 /**
  * ProofSettle attested compute enclave.
  *
- * Runs inside Google Confidential Space on AMD SEV-SNP. Holds a secp256k1 key that never leaves
+ * Runs inside Google Confidential Space on AMD SEV. Holds a secp256k1 key that never leaves
  * the enclave, runs the requested job, and signs the result together with its verdict.
  *
  * The signing key is derived at startup and only ever exists in enclave memory. Its address is
@@ -18,6 +18,16 @@ import { readFile } from 'node:fs/promises';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SIGNING_DOMAIN = 'proofsettle.result.v1';
+
+/**
+ * Which build this is, in a form a human can read.
+ *
+ * The measurement registered on chain is the container image digest, which is exact but tells you
+ * nothing on sight. This is the friendly half of the same fact, reported at /identity next to the
+ * digest so the two can be compared. It is not a security boundary: anything can claim a version,
+ * only the attestation token proves one.
+ */
+const BUILD = 'proofsettle-enclave/1.1.0';
 
 /**
  * Confidential Space exposes the attestation token over this unix socket. Reading it is how the
@@ -75,6 +85,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/identity') {
       const token = await attestationToken();
       return json(res, 200, {
+        build: BUILD,
         signer: SIGNER,
         attested: token !== null,
         attestationToken: token,
@@ -84,7 +95,7 @@ const server = createServer(async (req, res) => {
       });
     }
 
-    if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, signer: SIGNER });
+    if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, build: BUILD, signer: SIGNER });
 
     if (req.method === 'POST' && req.url === '/run') {
       const body = await new Promise((resolve, reject) => {
@@ -113,6 +124,7 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`proofsettle enclave listening on ${PORT}`);
+  console.log(`build ${BUILD}`);
   console.log(`signer ${SIGNER}`);
   attestationToken().then((t) => {
     console.log(t ? 'attestation token present, running inside Confidential Space' : 'NO ATTESTATION TOKEN: not running in an enclave');

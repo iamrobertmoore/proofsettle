@@ -14,3 +14,7 @@ _site/
 
 # written by deck/render.mjs on its way to the PDF
 deck/deck.rendered.html
+
+# Working notes and recording props live in ../working, beside the repository, never inside it.
+# This line is a guard: a stray copy in here must never reach a commit.
+working/

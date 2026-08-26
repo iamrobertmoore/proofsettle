@@ -5,7 +5,7 @@ different kinds, agree inside a single transaction.**
 
 Built for BUIDL CTC 2026 Fall, AI track. Solo entry.
 
-**Live page: [proofsettle.pages.dev](https://proofsettle.pages.dev)** — it reads Creditcoin in your
+**Live page: [proofsettle.pages.dev](https://proofsettle.pages.dev)**. It reads Creditcoin in your
 browser and re-runs every check, including the hardware attestation, without asking you to trust
 anything written here.
 

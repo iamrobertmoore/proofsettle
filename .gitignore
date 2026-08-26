@@ -9,8 +9,8 @@ broadcast/
 *.log
 .DS_Store
 
-# The Google Cloud CLI was unpacked in here. It is 500MB of somebody else's software and must
-# never end up in a commit. Left in place rather than moved, because the installer wrote its
-# path into ~/.zshrc.
-google-cloud-sdk/
-google-cloud-cli-*.tar.gz
+# assembled by script/build-site.sh, never committed
+_site/
+
+# written by deck/render.mjs on its way to the PDF
+deck/deck.rendered.html

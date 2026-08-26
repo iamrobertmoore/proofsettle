@@ -79,7 +79,8 @@ async function main() {
 
   if (mode === 'once') {
     const txHash = process.argv[3]!;
-    await settleOne(txHash, { cc, sepolia, settlement, info, prover });
+    const expectRefusal = process.argv.includes('--expect-refusal');
+    await settleOne(txHash, { cc, sepolia, settlement, info, prover, expectRefusal });
     return;
   }
 
@@ -120,6 +121,15 @@ interface Ctx {
   settlement: Contract;
   info: chainInfo.PrecompileChainInfoProvider;
   prover: proofProvider.service.ProofBuilder;
+  /**
+   * Demand that this settlement be refused, and treat success as the failure.
+   *
+   * A contract that enforces the buyer's policy should be shown refusing, not only succeeding, and
+   * a refusal is only evidence if it happens on a public chain where anyone can look it up. So
+   * this skips gas estimation, which would reject the call locally and broadcast nothing, sends
+   * with a fixed limit so the transaction mines and fails, and reports the reason.
+   */
+  expectRefusal?: boolean;
 }
 
 async function settleOne(txHash: string, ctx: Ctx) {
@@ -185,6 +195,48 @@ async function settleOne(txHash: string, ctx: Ctx) {
     s: att.s,
   };
 
+  if (ctx.expectRefusal) {
+    // Ask the node what would happen, before spending anything. On pallet-evm the revert reason
+    // does not always come back, so this is reported for what it is either way.
+    let simulated = 'the node did not return a reason';
+    try {
+      await settlement.settle.staticCall(
+        CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation
+      );
+      throw new Error('the simulation SUCCEEDED, so this job would settle. Nothing was refused.');
+    } catch (e: any) {
+      if (/simulation SUCCEEDED/.test(e.message ?? '')) throw e;
+      const parsed = e.data ? settlement.interface.parseError(e.data) : null;
+      simulated = parsed
+        ? `${parsed.name}(${parsed.args.map(String).join(', ')})`
+        : (e.shortMessage ?? e.message ?? String(e));
+    }
+    console.log(`  simulated refusal: ${simulated}`);
+
+    const sent = await settlement.settle(
+      CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation,
+      { gasLimit: 700_000n }
+    );
+    console.log(`  submitted ${sent.hash}`);
+    const rc = await ctx.cc.waitForTransaction(sent.hash);
+    if (!rc) throw new Error('no receipt');
+
+    if (rc.status === 1) {
+      throw new Error(`expected a refusal, but ${sent.hash} succeeded. The contract accepted a signature it should not have.`);
+    }
+    console.log('');
+    console.log(`  REFUSED on chain, which is the point`);
+    console.log(`           tx      ${sent.hash}`);
+    console.log(`           block   ${rc.blockNumber}, status 0, ${rc.gasUsed} gas`);
+    console.log(`           reason  ${simulated}`);
+    console.log(`           job     ${job.jobId}`);
+    console.log('');
+    console.log('  The buyer demanded a build this enclave is not. The settlement contract read that');
+    console.log('  requirement out of the proven Sepolia payment and refused, and the refusal is now');
+    console.log('  a public transaction anyone can look up.');
+    return;
+  }
+
   let gasLimit: bigint;
   try {
     const est = await settlement.settle.estimateGas(
@@ -203,7 +255,33 @@ async function settleOne(txHash: string, ctx: Ctx) {
     CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation, { gasLimit }
   );
   console.log(`  submitted ${sent.hash}`);
-  const rc = await sent.wait();
+
+  const rc = await ctx.cc.waitForTransaction(sent.hash);
+  if (!rc) throw new Error(`no receipt for ${sent.hash}`);
+
+  // A reverted settlement is a result, not a crash, and "transaction execution reverted" names
+  // nothing. Replay the call at the block it failed in and decode the custom error, so the reason
+  // is in the output rather than in somebody's head.
+  if (rc.status !== 1) {
+    let reason = 'the node returned no revert data, which pallet-evm does not always provide';
+    try {
+      await ctx.cc.call({ to: sent.to, from: sent.from, data: sent.data, blockTag: rc.blockNumber - 1 });
+    } catch (e: any) {
+      const raw = e.data ?? e.info?.error?.data;
+      const parsed = raw && raw !== '0x' ? settlement.interface.parseError(raw) : null;
+      if (parsed) reason = `${parsed.name}(${parsed.args.map(String).join(', ')})`;
+      else if (e.shortMessage) reason = e.shortMessage;
+    }
+    console.log('');
+    console.log(`  REFUSED on chain`);
+    console.log(`           tx      ${sent.hash}`);
+    console.log(`           block   ${rc.blockNumber}, status 0, ${rc.gasUsed} gas`);
+    console.log(`           reason  ${reason}`);
+    console.log('');
+    console.log('  If you meant to demonstrate a refusal, that is the transaction to link to.');
+    console.log('  If you did not, the reason above says which guarantee stopped it.');
+    return;
+  }
 
   const parsed = rc.logs
     .map((l: any) => {

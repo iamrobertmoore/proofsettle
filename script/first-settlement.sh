@@ -180,6 +180,22 @@ say "    provider $PROVIDER_ADDRESS"
 
 # --- 4. create the job on Sepolia ---------------------------------------------------------------
 
+# The buyer's policy. Normally this is whichever enclave is live, because that is the point: the
+# job demands the build that will actually run it. Set REQUIRED_MEASUREMENT to demand a different
+# one, which creates a job that cannot settle. That is not a mistake, it is the demonstration:
+# the contract enforces what the buyer asked for and refuses everything else.
+if [ -n "${REQUIRED_MEASUREMENT:-}" ]; then
+    if [ "$REQUIRED_MEASUREMENT" = "$ENCLAVE_MEASUREMENT" ]; then
+        fail "REQUIRED_MEASUREMENT is the same as the live enclave, so there is nothing to refuse."
+    fi
+    say ""
+    say "    NOTE: this job will demand $REQUIRED_MEASUREMENT"
+    say "    and the live enclave is  $ENCLAVE_MEASUREMENT"
+    say "    so it is expected to be REFUSED on chain. Settle it with:"
+    say "        npx tsx worker/settle.ts once THE_HASH --expect-refusal"
+    ENCLAVE_MEASUREMENT="$REQUIRED_MEASUREMENT"
+fi
+
 MODEL_HASH="$(cast keccak "llama-3.1-8b-instruct")"
 INPUT_HASH="$(cast keccak "proofsettle demo prompt, $(cast block-number --rpc-url "$SOURCE_CHAIN_RPC_URL")")"
 

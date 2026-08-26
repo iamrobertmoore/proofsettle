@@ -5,6 +5,10 @@ different kinds, agree inside a single transaction.**
 
 Built for BUIDL CTC 2026 Fall, AI track. Solo entry.
 
+**Live page: [proofsettle.pages.dev](https://proofsettle.pages.dev)** — it reads Creditcoin in your
+browser and re-runs every check, including the hardware attestation, without asking you to trust
+anything written here.
+
 ---
 
 ## What it does
@@ -114,9 +118,29 @@ is the exact failure this project exists to make visible.
 
 ## Verify it yourself
 
-`site/index.html` is a self-contained page that reads Creditcoin directly in your browser and
-re-runs every check the settlement contract ran. No backend, no API key. It also carries the
-measurement below.
+**[proofsettle.pages.dev](https://proofsettle.pages.dev)** is a self-contained page that reads
+Creditcoin directly in your browser and re-runs every check the settlement contract ran. No backend,
+no API key, no account. The source is `site/index.html`, and opening that file locally does the same
+thing.
+
+It is prefilled with a real settlement. Change the job id and it will check a different one, or tell
+you plainly that there is nothing there.
+
+It also does the one check the chain cannot do. Verifying a hardware attestation on chain is not
+affordable, so the page fetches the enclave's attestation token and Google's live signing keys,
+verifies the RS256 signature with WebCrypto, and then checks that the container image digest inside
+the token is the same measurement the registry has bound on chain. That join is the whole system in
+one screen: Creditcoin says which build was permitted, Google says which build actually ran, and
+your browser confirms they are the same one.
+
+```bash
+node site/test-attestation.mjs
+```
+
+drives exactly that path in a real browser against a token it signs itself, then breaks it four
+ways: a tampered signature, an image that does not match the registry, a debug image, and an
+absent token. A page that accepts a valid attestation and also accepts a tampered one has told you
+nothing, so the test is written to prove it can fail.
 
 ## How much of the Attestcoin oracle is real application use
 
@@ -238,6 +262,25 @@ off chain:
 
 Both proofs were checked in that single transaction. Neither half could have settled without the
 other.
+
+## And here it is refusing
+
+Success is the easy half. A second job was created where the buyer demanded a **different** enclave
+build, the same enclave answered it, and the settlement contract rejected it on a public chain:
+
+| | |
+|---|---|
+| Refused settlement | [`0xda7d9942…894af`](https://creditcoin-testnet.blockscout.com/tx/0xda7d994268a841fcd1a5a7a3d9366e8e4027501f635fdcc20bfb91ddd9d894af), block 5,367,004, status 0, 410,858 gas |
+| Reason | `EnclaveNotAccepted(0x29f228be…, 0xC7561c7e…)` |
+
+That error names both halves of the disagreement: the build the buyer demanded, and the key that
+actually signed. Note which way round it is. **The build the buyer asked for there was the weaker
+one**, the unattested development key from earlier in the day, and the attested enclave's answer was
+refused anyway. The contract holds no opinion about which build is better. It enforces the one the
+buyer named, and nothing else.
+
+The refusal is mined rather than simulated on purpose. A local revert proves nothing to anyone who
+was not at the keyboard.
 
 **The enclave is real.** The measurement bound on chain is the container image digest itself, so
 there is no indirection to take on trust: pull the image, read its digest, compare. The

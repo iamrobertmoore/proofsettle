@@ -107,26 +107,39 @@ for (const scheme of ['light', 'dark']) {
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
 
+  // The page asks Google Fonts for Tektur and Inter, which are Creditcoin's own faces. This
+  // sandbox has no egress to them, and more to the point the page must not depend on them: a
+  // judge on a locked-down network still has to be able to read it. Serve an empty stylesheet
+  // and assert the page works anyway, rather than tolerating a font error in the console.
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (route) =>
+    route.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+
   await page.goto(`http://127.0.0.1:${PORT}/?rpc=http://127.0.0.1:${PORT}/mockrpc`, { waitUntil: 'networkidle' });
 
   console.log(`\n--- ${scheme} mode ---`);
   check(consoleErrors.length === 0, 'no console errors', consoleErrors.slice(0, 2).join(' | '));
 
-  // The measurement must actually render, not just be fetched.
-  const tiles = await page.$$eval('#tiles .tile .n', (els) => els.map((e) => e.textContent.trim()));
-  check(tiles.length === 4 && tiles.every(Boolean), 'four stat tiles rendered', tiles.join(' / '));
+  // This is a standalone page now, so it has to say what it is and which chain it is about
+  // without the reader having arrived from the repository.
+  const h1 = await page.$eval('h1', (e) => e.textContent.trim());
+  check(/Creditcoin/i.test(h1), 'the headline names Creditcoin', h1.slice(0, 60));
 
-  const bars = await page.$$eval('#daily .barrow', (els) => els.length);
-  check(bars > 5, 'daily bars rendered', `${bars} rows`);
+  const frame = await page.$eval('.frame', (e) => e.textContent.replace(/\s+/g, ' ').trim());
+  check(/audit tool/i.test(frame) && /including me/i.test(frame),
+    'the page states who it is for and that it trusts nobody, including me');
 
-  const rows = await page.$$eval('#contracts tbody tr', (els) => els.length);
-  check(rows > 0, 'contract table rendered', `${rows} rows`);
+  // Creditcoin's own site is dark, and this page commits to that rather than following the
+  // viewer. A light-mode visitor must still get the designed page, not a half-inverted one.
+  const ground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(ground === 'rgb(12, 14, 16)', 'the Creditcoin ground colour holds in both schemes', ground);
 
-  const reading = await page.$eval('#reading', (e) => e.textContent.trim());
-  check(reading.length > 80 && !reading.includes('could not be loaded'), 'reading paragraph filled');
-
-  const prov = await page.$eval('#prov', (e) => e.textContent.trim());
-  check(prov.includes('Unscanned blocks: 0'), 'provenance line states complete coverage');
+  // The scroll reveal must never be able to leave content permanently invisible. This is a real
+  // bug that shipped for about twenty minutes: a full-page screenshot came back with a blank
+  // band where two sections should have been.
+  await page.waitForTimeout(1900);
+  const hidden = await page.$$eval('.r', (els) =>
+    els.filter((e) => Number(getComputedStyle(e).opacity) < 0.99).map((e) => e.id || e.className));
+  check(hidden.length === 0, 'no revealable section stays invisible', hidden.join(', '));
 
   // Nothing may overflow horizontally.
   const overflow = await page.evaluate(() =>
@@ -139,6 +152,14 @@ for (const scheme of ['light', 'dark']) {
   check(box && box.width > 40 && box.height > 20, 'run button has a real hit area',
     box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'none');
 
+  // elementFromPoint only sees the viewport, and the page is now long enough that the button
+  // starts below the fold. Scroll to it the way a visitor would, then hit test: the point of this
+  // assertion is overlays that swallow the click, not where the button happens to sit at load.
+  // scroll-behavior is smooth, so an instant scroll keeps this deterministic. Waiting a fixed
+  // 250ms instead made this fail while the page was still gliding, which looks exactly like the
+  // overlay bug it is meant to catch and wasted a diagnosis.
+  await page.evaluate(() => document.querySelector('#go').scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await page.waitForTimeout(400);
   const hitsButton = await page.evaluate(() => {
     const b = document.querySelector('#go');
     const r = b.getBoundingClientRect();
@@ -171,12 +192,37 @@ for (const scheme of ['light', 'dark']) {
   await page.waitForTimeout(2500);
   results = await page.$$eval('#results li', (els) => els.map((e) => e.textContent.trim()));
   check(results.length >= 5, 'a real settlement produces the full check list', `${results.length} checks`);
-  check(results.every((t) => t.startsWith('✓')), 'every check passes for a valid settlement',
-    results.filter((t) => t.startsWith('✗')).join(' | ').slice(0, 80));
+  // The attestation half needs a published token and Google's keys, which site/test-attestation.mjs
+  // supplies properly across four scenarios. Here there is deliberately no token, so the useful
+  // assertion is the other one: a missing attestation has to read as a failure rather than quietly
+  // vanishing from the list. A page that drops a check it cannot perform is worse than useless.
+  const chainChecks = results.filter((t) => !/attestation/i.test(t));
+  check(chainChecks.every((t) => t.startsWith('✓')), 'every chain check passes for a valid settlement',
+    chainChecks.filter((t) => t.startsWith('✗')).join(' | ').slice(0, 80));
+  check(results.some((t) => t.startsWith('✗') && /No attestation token is published/.test(t)),
+    'a missing attestation is reported, not silently skipped');
   check(results.some((t) => /Partial at 75%/.test(t)), 'the verdict and score are decoded correctly');
   check(results.some((t) => /conserves the payment/.test(t)), 'value conservation is checked');
   check(results.some((t) => /consumed, and cannot be reused/.test(t)), 'replay protection is surfaced');
   check(results.some((t) => /binding is live, not revoked/.test(t)), 'the enclave binding is checked');
+
+  // The hero animation states two facts about real transactions, so it has to actually reach both
+  // of them. Run this once rather than in both colour schemes; it takes about ten seconds.
+  if (scheme === 'dark') {
+    await page.evaluate(() => document.getElementById('rig').scrollIntoView({ block: 'center' }));
+    const reached = async (want) => {
+      try {
+        await page.waitForFunction(
+          (w) => document.getElementById('verdict')?.textContent === w, want, { timeout: 20000 });
+        return true;
+      } catch { return false; }
+    };
+    check(await reached('settled'), 'the hero animation reaches the settled state');
+    check(await reached('refused'), 'and goes on to show the refusal');
+    const cap = await page.$eval('#rig-cap', (e) => e.textContent);
+    check(/EnclaveNotAccepted/.test(cap) && /5,367,004/.test(cap),
+      'the refusal caption names the real error and the real block', cap.slice(0, 70));
+  }
 
   await page.screenshot({ path: `/tmp/verifier-${scheme}.png`, fullPage: true });
   await ctx.close();

@@ -159,6 +159,11 @@ Almost every contract using the oracle is exercised only by the address that dep
 builders testing their own work rather than users using it, and it is the headroom this project was
 built for.
 
+Measuring it also turned up an error in Gluwa's own tutorial, which tells developers a faucet claim
+buys nine oracle queries. Priced from eight transactions through their minter, the real figure is
+closer to four hundred thousand. Reported upstream at
+[ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
+
 This says what was measured. It does not claim who operates any particular address. Reproduce it:
 
 ```bash

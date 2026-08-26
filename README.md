@@ -228,13 +228,6 @@ caught.**
 The script refuses to pass if a mutation target no longer exists in the source, so a refactor
 cannot quietly turn a real check into a no-op.
 
-## Prior art, declared
-
-I have built attestation verification joined to a registry twice before: once against a Flare
-on-chain registry, entirely in the browser, and once against a document store. The pattern is one I
-understand rather than a codebase I pasted, and the Solidity here is written fresh for this
-contract during the hackathon. Saying so is cheaper than having someone wonder.
-
 ## One settlement, end to end, on the live network
 
 A real job, paid for on Ethereum Sepolia, settled on Creditcoin against the Attestcoin oracle, with

@@ -65,6 +65,12 @@ the off-chain worker rather than of the contract. A worker is not a guarantee.
 | `ComputeSettlement` | Creditcoin CC3 testnet | [`0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06`](https://creditcoin-testnet.blockscout.com/address/0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06) |
 | `EvmV1Decoder` | Creditcoin CC3 testnet | [`0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40`](https://creditcoin-testnet.blockscout.com/address/0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40) |
 
+The three contracts I wrote are **verified on Blockscout**, so those links resolve to Solidity
+rather than bytecode, our events decode by name, and the refusal transaction shows its revert
+reason in full: `EnclaveNotAccepted(bytes32 requiredMeasurement, address recovered)` with both
+values named. Republish after any redeploy with `./script/verify-contracts.sh`, which reads the
+constructor arguments back off the chain rather than trusting a local file.
+
 `EvmV1Decoder` is Gluwa's own decoding library from `@gluwa/usc-contracts`, deployed separately and
 linked into `ComputeSettlement`, because it exposes public functions. It is on Creditcoin at the
 same address as the escrow is on Sepolia, which is not a mistake: `CREATE` derives an address from

@@ -80,6 +80,28 @@ Writability, the return leg that would carry a settlement receipt back to Sepoli
 by Gluwa as "currently under third-party testing and audits" and is not on testnet, so it is not
 used here. The return path is a labelled conventional relayer; see below.
 
+### What this leaves behind for other Attestcoin builders
+
+The precompile proves that a transaction was in a block. It does not, by design, say whether the
+transaction succeeded, which contract emitted the event you care about, whether you have counted
+it before, or what it is bound to; a dApp may legitimately want to prove a failed transaction.
+Everything above that line is the consumer's job, and four pieces of that job here are written to
+be lifted out and reused:
+
+- **`AttestcoinProven.sol`**, the base that consumes a proof exactly once, treats a `false` from the
+  verifier as a failure rather than only the revert, checks the receipt status, and pins the
+  emitter. Its eleven guarantees each have a test and a mutation that proves the test can fail.
+- **`worker/block-provider.ts`**, a block provider for the SDK's raw proof builder that works
+  against nodes without `eth_getBlockReceipts`, with the live byte-for-byte comparison against the
+  hosted builder that shows it is safe to depend on.
+- **The calldata rider** (`enclave/envelope.mjs`, `withTrailer` and `fromTrailer`), a way to carry
+  sealed or plain data inside a transaction that an Attestcoin proof will later cover, without
+  changing the contract that receives it. Pinned against the compiled ABI decoder for both static
+  and dynamic argument lists.
+- **`script/measure.ts`**, the complete-coverage scan of the verifier precompile's use on CC3, and
+  the correction it produced to Gluwa's own tutorial, filed upstream at
+  [ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
+
 ## Contracts
 
 | Contract | Chain | What it does |

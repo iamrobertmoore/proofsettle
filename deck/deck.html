@@ -272,12 +272,12 @@
       <div class="step">
         <div class="where">Ethereum Sepolia</div>
         <div class="what">Amara pays, and names the enclave build she will accept</div>
-        <div class="note">The requirement travels inside the payment event itself.</div>
+        <div class="note">The requirement travels inside the payment event. The applicant's record rides with it, sealed to the enclave's key.</div>
       </div>
       <div class="step">
         <div class="where">Off chain</div>
-        <div class="what">A TEE runs the job and signs the result with its verdict</div>
-        <div class="note">Google Confidential Space, AMD SEV. The key never leaves the enclave.</div>
+        <div class="what">A TEE opens the record, runs the named model, signs the verdict</div>
+        <div class="note">Google Confidential Space, AMD SEV. Neither key leaves the enclave. The answer goes back sealed to Amara alone.</div>
       </div>
       <div class="step">
         <div class="where">Attestcoin oracle</div>
@@ -326,6 +326,48 @@
 </section>
 
 
+<!-- 5b -->
+<section class="slide">
+  <div class="eyebrow">Inside the enclave</div>
+  <h2>The data never touches either chain</h2>
+  <div class="body">
+    <div class="rail">
+      <div class="step">
+        <div class="where">In Amara's browser</div>
+        <div class="what">The record is sealed to a key that exists only inside the enclave</div>
+        <div class="note">X25519, HKDF, AES-GCM in thirty lines of WebCrypto. Only <span class="mono">keccak256</span> of the record goes on chain.</div>
+      </div>
+      <div class="step">
+        <div class="where">Inside the payment</div>
+        <div class="what">The sealed bytes ride behind the calldata arguments</div>
+        <div class="note">The ABI decoder ignores what follows the arguments. Two forge tests pin that against the compiled bytecode. No contract changed.</div>
+      </div>
+      <div class="step">
+        <div class="where">Inside the enclave</div>
+        <div class="what">Open, check the commitment, run the model the buyer named</div>
+        <div class="note">The model is in the image; its hash is in the attestation's identity. Any other model, or a record that does not match, is refused and signed as Rejected.</div>
+      </div>
+      <div class="step">
+        <div class="where">Inside the settlement</div>
+        <div class="what">The answer rides back, sealed to Amara's one-time key</div>
+        <div class="note">She opens it and checks it hashes to the <span class="mono">resultHash</span> the contract recorded. The worker that carried it cannot read it.</div>
+      </div>
+    </div>
+    <div class="cols c2" style="margin-top:30px;gap:26px">
+      <div class="card">
+        <h3>The keys are part of what Google signs</h3>
+        <p style="margin-top:10px">The enclave asks the Confidential Space launcher for its attestation token with its own two public keys as nonces. So the token does not only say which image ran. It says <b>these keys were generated inside it</b>, and the page checks for that.</p>
+      </div>
+      <div class="card">
+        <h3>Zero runtime dependencies inside the boundary</h3>
+        <p style="margin-top:10px">Keccak, secp256k1, the envelope and the model are a few hundred lines of plain Node, checked against ethers outside the enclave. A supply chain is a poor thing to put inside a trust boundary.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Nothing in between, the provider's own worker included, can read the record or change the verdict</span><span class="n">6</span></div>
+</section>
+
+
 <!-- 6 -->
 <section class="slide">
   <div class="eyebrow">Live today</div>
@@ -333,8 +375,8 @@
   <div class="body cols c-7-5">
     <div>
       <table class="kv">
-        <tr><td>Payment</td><td class="mono">__PAYMENT_TX__<br><span class="small">Sepolia, block __PAYMENT_BLOCK__</span></td></tr>
-        <tr><td>Settlement</td><td class="mono">__SETTLE_TX__<br><span class="small">Creditcoin CC3, __GAS__ gas, 0.000233 CTC</span></td></tr>
+        <tr><td>Payment</td><td class="mono">__PAYMENT_TX__<br><span class="small">Sepolia, block __PAYMENT_BLOCK__, carrying the applicant's record sealed to the enclave</span></td></tr>
+        <tr><td>Settlement</td><td class="mono">__SETTLE_TX__<br><span class="small">Creditcoin CC3, __GAS__ gas, 0.000243 CTC, carrying the answer sealed to the buyer</span></td></tr>
         <tr><td>Settlement contract</td><td class="mono">0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06</td></tr>
         <tr><td>Enclave registry</td><td class="mono">0xAc014b7Df7f9b2dA343d895F22a392c655338bFb</td></tr>
         <tr><td>Escrow, Sepolia</td><td class="mono">0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40</td></tr>
@@ -367,27 +409,32 @@
   <div class="body cols c-7-5">
     <div>
       <p class="lead" style="margin-bottom:20px">
-        A second job, where the buyer demanded a <b>different</b> enclave build. The same enclave
-        answered. The contract rejected it on chain, and nothing was released.
+        A job where the buyer demanded the <b>previous</b> enclave build, revoked that morning with
+        the reason on chain. The live enclave answered anyway. The contract rejected it, and nothing
+        was released.
       </p>
       <table class="kv">
-        <tr><td>Transaction</td><td class="mono">0xda7d9942…894af<br>
-          <span class="small">Creditcoin CC3, block 5,367,004, status 0, 410,858 gas</span></td></tr>
-        <tr><td>Revert</td><td class="mono">EnclaveNotAccepted(0x29f228be…, 0xC7561c7e…)<br>
+        <tr><td>Transaction</td><td class="mono">0xaab7768b…ccb87a<br>
+          <span class="small">Creditcoin CC3, block 5,462,957, status 0, 416,682 gas</span></td></tr>
+        <tr><td>Revert</td><td class="mono">EnclaveNotAccepted(0xc0a8e85a…, 0x986fb1b9…)<br>
           <span class="small">The build the buyer named, and the one that actually signed. The error
           names both halves of the disagreement rather than failing silently.</span></td></tr>
+        <tr><td>Revocation</td><td class="mono">0xa1d4eb78…058c9<br>
+          <span class="small">"superseded by proofsettle-enclave/1.2.0: model inside the image, sealed input and output, keys generated inside the enclave"</span></td></tr>
       </table>
     </div>
     <div>
       <div class="card" style="border-color:var(--warm)">
-        <h3 style="color:var(--warm)">The build it refused was the weaker one</h3>
+        <h3 style="color:var(--warm)">The build it refused was the newer, better one</h3>
         <p style="margin-top:10px">
-          What the buyer demanded there was an unattested development key. A genuinely attested
-          enclave answered instead, and was refused anyway.
+          The buyer asked for 1.1.0. The 1.2.0 enclave, attested, nonce-bound, carrying the model,
+          did the work and signed, and was refused for not being what was asked for.
         </p>
         <p style="margin-top:12px">
           <b>The contract has no opinion about which build is better. It enforces the one the buyer
-          named.</b> That is what makes the policy theirs rather than mine.
+          named.</b> That is what makes the policy theirs rather than mine. An earlier refusal, on 24
+          August, went the other way: an attested build refused because the buyer had named an
+          unattested one.
         </p>
       </div>
       <p class="small" style="margin-top:18px">
@@ -397,6 +444,45 @@
     </div>
   </div>
   <div class="foot"><span>Anyone can re-run every one of these checks in a browser, with no backend</span><span class="n">7</span></div>
+</section>
+
+
+<!-- 7b -->
+<section class="slide">
+  <div class="eyebrow">Amara's desk</div>
+  <h2>Buy one decision, and watch both proofs land</h2>
+  <div class="body cols c-7-5">
+    <div>
+      <p class="lead" style="margin-bottom:18px">
+        <span class="mono">__SITE_URL__/desk.html</span> is the buyer's side. Pick an applicant, name
+        the build you will accept, pay once on Sepolia. The page then reads every step off the two
+        chains and opens the answer with a key only it holds.
+      </p>
+      <table class="kv">
+        <tr><td><span class="tick">&#10003;</span> Provider</td><td>Registry binding read live; Google's signature on the attestation checked in the browser; the enclave's keys found in the token's nonces</td></tr>
+        <tr><td><span class="tick">&#10003;</span> Paid</td><td>Mined on Sepolia, with the sealed record inside the same transaction</td></tr>
+        <tr><td><span class="tick">&#10003;</span> Attested</td><td>Height read from the ChainInfo precompile at <span class="mono">0x…0fd3</span></td></tr>
+        <tr><td><span class="tick">&#10003;</span> Settled</td><td>Both proofs in one transaction, the answer opened and its hash matched against the chain</td></tr>
+        <tr><td><span class="warn">&#10007;</span> Or refused</td><td>Demand the revoked build and the page finds the reverted settlement and decodes <span class="mono">EnclaveNotAccepted</span> by name</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card" style="border-color:rgba(62,207,142,.45)">
+        <div style="font-family:var(--display);font-size:40px;line-height:1;color:var(--good);font-weight:500">approve</div>
+        <p style="margin-top:8px">Score <b>75.51%</b>, from <span class="mono">proofsettle-enclave/1.2.0</span>. Only this browser can read this.</p>
+        <div class="bars" style="margin-top:14px">
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>supplier on time</span><span class="t"><span class="f" style="width:56%;background:var(--good)"></span></span><span class="n">+0.30</span></div>
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>no defaults</span><span class="t"><span class="f" style="width:50%;background:var(--good)"></span></span><span class="n">+0.27</span></div>
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>inflow regularity</span><span class="t"><span class="f" style="width:38%;background:var(--good)"></span></span><span class="n">+0.20</span></div>
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>balance volatility</span><span class="t"><span class="f" style="width:30%;background:var(--good)"></span></span><span class="n">+0.16</span></div>
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>months of history</span><span class="t"><span class="f" style="width:17%;background:var(--warm)"></span></span><span class="n">&#8722;0.09</span></div>
+          <div class="bar" style="grid-template-columns:150px 1fr 48px"><span>no loans yet</span><span class="t"><span class="f" style="width:32%;background:var(--warm)"></span></span><span class="n">&#8722;0.17</span></div>
+        </div>
+      </div>
+      <p class="small" style="margin-top:14px">The thin-file applicant Amara exists for. Six months of records, no loans, suppliers paid on time. Weighted towards behaviour, not length of history.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Driven end to end in a real browser against the real enclave code: site/test-desk.mjs, 36 checks</span><span class="n">9</span></div>
 </section>
 
 
@@ -445,9 +531,9 @@
   <h2>A green test suite is not evidence</h2>
   <div class="body">
     <div class="cols c3" style="gap:26px">
-      <div class="stat"><span class="v">49</span><span class="k">tests, every guarantee paired with a negative case</span></div>
+      <div class="stat"><span class="v">51</span><span class="k">contract tests, every guarantee paired with a negative case, plus enclave, worker and three browser suites</span></div>
       <div class="stat"><span class="v">11<span style="font-size:24px;color:var(--muted)">/11</span></span><span class="k">mutations killed. Each removes one guarantee and proves the test defending it goes red</span></div>
-      <div class="stat"><span class="v">2</span><span class="k">independent implementations of the signing digest, checked against each other</span></div>
+      <div class="stat"><span class="v">10</span><span class="k">stages in <span class="mono">npm run judge:verify</span>, ending with live readbacks from Creditcoin. No key, no account</span></div>
     </div>
     <div class="cols c2" style="margin-top:34px">
       <div class="card">
@@ -493,7 +579,8 @@
       <h3>The rail is one-directional today</h3>
       <p style="margin-top:10px">
         Attestcoin carries attested data into Creditcoin. Writability, which would carry a settlement
-        receipt back out, is out of scope this season, as the protocol team confirmed at the kickoff AMA.
+        receipt back out, is documented as still under third-party testing and is not on testnet, as
+        the protocol team also said at the kickoff AMA.
       </p>
       <p style="margin-top:12px">
         So the return leg is a plainly labelled conventional relayer, and the buyer's refund is gated on

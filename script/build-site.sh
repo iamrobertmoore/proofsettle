@@ -28,7 +28,7 @@ out="_site"
 rm -rf "$out"
 mkdir -p "$out"
 
-for f in site/index.html site/deployments.json deck/ProofSettle-deck.pdf enclave/attestation.jwt; do
+for f in site/index.html site/desk.html site/deployments.json site/enclave.json deck/ProofSettle-deck.pdf enclave/attestation.jwt; do
     [ -f "$f" ] || fail "missing $f. The site is incomplete without it."
     cp "$f" "$out/"
 done
@@ -38,6 +38,12 @@ done
 for key in settlement enclaveRegistry sourceEscrow exampleJobId; do
     v="$(sed -n "s/.*\"$key\": *\"\([^\"]*\)\".*/\1/p" "$out/deployments.json")"
     [ -n "$v" ] || fail "deployments.json has no $key, so the page would open with an empty form"
+done
+
+# The desk reads enclave.json before it seals anything. Ship it only if it names a build.
+for key in build measurement signer; do
+    v="$(sed -n "s/.*\"$key\": *\"\([^\"]*\)\".*/\1/p" "$out/enclave.json")"
+    [ -n "$v" ] || fail "enclave.json has no $key. Run enclave/deploy/40-register.sh."
 done
 
 # Likewise a token the page cannot parse.

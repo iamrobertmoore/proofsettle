@@ -170,6 +170,25 @@ contract ComputeSettlementTest is Test {
         assertTrue(settledAt != 0);
     }
 
+    /// @notice The sealed answer rides after settle's arguments the same way the sealed record
+    /// rides after createJob's. settle takes dynamic arguments, so this pins that the decoder's
+    /// bounds come from the head offsets and not from calldatasize.
+    function test_settles_with_a_sealed_result_appended_after_the_arguments() public {
+        Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        bytes memory rider = hex"01";
+        for (uint256 i = 0; i < 200; i++) rider = abi.encodePacked(rider, bytes1(uint8(i)));
+        bytes memory data = abi.encodePacked(
+            abi.encodeCall(settlement.settle, (SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, _att(p))),
+            rider,
+            uint32(rider.length),
+            bytes4("PSE1")
+        );
+        (bool ok, bytes memory ret) = address(settlement).call(data);
+        assertTrue(ok, "the decoder rejected the trailing rider");
+        assertEq(abi.decode(ret, (bytes32)), JOB_ID, "settled the wrong job");
+        assertEq(credit.balanceOf(provider), AMOUNT, "provider was not paid");
+    }
+
     // ------------------------------------------------------------------ proof one must be real
 
     function test_reverts_when_the_oracle_rejects_the_proof() public {

@@ -35,11 +35,9 @@ jobs:
       - name: Assemble the published directory
         run: |
           mkdir -p _site
-          cp site/index.html site/deployments.json site/measurement.json _site/
-          cp deck/ProofSettle-deck.pdf _site/
-          # The page verifies this in the browser against Google's live signing keys, so it has to
-          # sit next to the page rather than only in the repository.
+          cp site/index.html site/desk.html site/deployments.json site/enclave.json site/measurement.json _site/
           cp enclave/attestation.jwt _site/
+          cp deck/ProofSettle-deck.pdf _site/
           ls -la _site
 
       - uses: actions/configure-pages@v5

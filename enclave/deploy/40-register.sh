@@ -143,6 +143,34 @@ echo "  measurementOf   $measurement_of"
 [ "$confirmed" = "true" ] || die "registration did not take effect"
 [ "$measurement_of" = "$MEASUREMENT" ] || die "the registry binds that signer to $measurement_of, not $MEASUREMENT"
 
+say "5. Publish the identity the desk page reads"
+# site/enclave.json is what a buyer's browser reads before it seals anything: the build, the two
+# keys, the model, and which earlier build this one superseded. Everything in it is re-checked in
+# the browser against the registry and against Google's token, so a stale or edited file is caught
+# rather than believed.
+: "${PROVIDER_ADDRESS:=}"
+[ -n "$PROVIDER_ADDRESS" ] || echo "  WARNING: PROVIDER_ADDRESS is empty in .env, so the desk page cannot name who gets paid. script/first-settlement.sh sets it."
+printf '%s' "$identity" | MEASUREMENT="$MEASUREMENT" PROVIDER_ADDRESS="$PROVIDER_ADDRESS" node -e '
+  const fs = require("fs");
+  let b = ""; process.stdin.on("data", (c) => (b += c)).on("end", () => {
+    const id = JSON.parse(b);
+    const model = JSON.parse(fs.readFileSync("enclave/model.json", "utf8"));
+    let prev = null; try { prev = JSON.parse(fs.readFileSync("site/enclave.json", "utf8")); } catch {}
+    const superseded = prev && prev.measurement && prev.measurement.toLowerCase() !== process.env.MEASUREMENT.toLowerCase() ? prev : null;
+    const out = {
+      _comment: "Written by enclave/deploy/40-register.sh from the running enclave and its verified token. The desk page re-checks every field here against the registry and against Google.",
+      build: id.build, measurement: process.env.MEASUREMENT, signer: id.signer, encryptionPublicKey: id.encryptionPublicKey,
+      modelHash: id.modelHash, modelName: model.name + " " + model.version,
+      previousMeasurement: superseded ? superseded.measurement : (prev ? prev.previousMeasurement ?? null : null),
+      previousBuild: superseded ? superseded.build : (prev ? prev.previousBuild ?? null : null),
+      provider: process.env.PROVIDER_ADDRESS || null, nonceBound: id.nonceBound === true, registeredAt: new Date().toISOString(),
+    };
+    fs.writeFileSync("site/enclave.json", JSON.stringify(out, null, 2) + "\n");
+    const dep = JSON.parse(fs.readFileSync("site/deployments.json", "utf8"));
+    if (process.env.PROVIDER_ADDRESS) { dep.provider = process.env.PROVIDER_ADDRESS; fs.writeFileSync("site/deployments.json", JSON.stringify(dep, null, 2) + "\n"); }
+    console.log("  site/enclave.json  " + out.build + ", keys bound by Google: " + out.nonceBound + (out.previousBuild ? ", supersedes " + out.previousBuild : ""));
+  });'
+
 cat <<EOF
 
 Registration confirmed by reading the registry back, not assumed.

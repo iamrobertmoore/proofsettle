@@ -26,6 +26,11 @@ export interface JobRequest {
   inputHash: string;
   settlementAddress: string;
   chainId: number;
+  /**
+   * The buyer's input, sealed to the enclave's X25519 key, exactly as it rode in the calldata of
+   * the payment. Absent when the payment carried none, which the enclave refuses by name.
+   */
+  ciphertext?: string;
 }
 
 export interface SignedResult {
@@ -38,6 +43,10 @@ export interface SignedResult {
   /** True only when the signature came from a real attested enclave. */
   attested: boolean;
   signer: string;
+  /** The result, sealed to the buyer's one-time key. The worker cannot read it. Null on a refusal. */
+  resultCiphertext?: string | null;
+  /** On a refusal, the enclave's reason, in the clear, because there is no key to seal it to. */
+  rejection?: { rejected: string; detail: string | null } & Record<string, unknown>;
 }
 
 const SIGNING_DOMAIN = 'proofsettle.result.v1';
@@ -96,27 +105,64 @@ export async function signResult(job: JobRequest): Promise<SignedResult> {
       '  !! from this mode as evidence of hardware attestation.\n'
   );
 
-  const wallet = new ethers.Wallet(devKey);
-  const { resultHash, outcome, scoreBps } = await runJobLocally(job);
+  const dev = await devIdentity(devKey);
+  const { outcome, scoreBps, resultHash, resultCiphertext, rejection } = dev.run(job);
   const digest = resultDigest(job.settlementAddress, job.chainId, job.jobId, resultHash, outcome, scoreBps);
-  const sig = wallet.signingKey.sign(digest);
+  const sig = dev.wallet.signingKey.sign(digest);
 
-  return { resultHash, outcome, scoreBps, v: sig.v, r: sig.r, s: sig.s, attested: false, signer: wallet.address };
+  return { resultHash, outcome, scoreBps, v: sig.v, r: sig.r, s: sig.s, attested: false, signer: dev.wallet.address, resultCiphertext, rejection };
 }
 
 /**
- * Development stand-in for the model. The real one runs inside the enclave.
- *
- * It is deterministic on the job so a demo replays identically, and it produces all three outcomes
- * across different jobs so the settlement paths are all exercisable without waiting for a real
- * model to happen to fail.
+ * The development stand-in for the enclave. It runs the same model, the same envelope and the
+ * same refusals as enclave/server.mjs, because a stand-in that behaves differently from the thing
+ * it stands in for is how demos come to prove something the product does not do. The only
+ * difference is the keys: the signer is the development key, and the X25519 key is derived from
+ * it so a buyer can seal input to it ahead of time.
  */
-async function runJobLocally(job: JobRequest): Promise<{ resultHash: string; outcome: Outcome; scoreBps: number }> {
-  const resultHash = ethers.keccak256(
-    ethers.solidityPacked(['bytes32', 'bytes32', 'bytes32'], [job.jobId, job.modelHash, job.inputHash])
-  );
-  const bucket = Number(BigInt(resultHash) % 10n);
-  if (bucket === 0) return { resultHash, outcome: Outcome.Rejected, scoreBps: 0 };
-  if (bucket === 1) return { resultHash, outcome: Outcome.Partial, scoreBps: 5000 };
-  return { resultHash, outcome: Outcome.Accepted, scoreBps: 10_000 };
+export async function devIdentity(devKey: string) {
+  const [{ loadModel, score, canonical, hashOf }, envelope, crypto, nodeCrypto] = await Promise.all([
+    import('../enclave/model.mjs'),
+    import('../enclave/envelope.mjs'),
+    import('../enclave/crypto.mjs'),
+    import('node:crypto'),
+  ]);
+  const wallet = new ethers.Wallet(devKey);
+  const seed = Buffer.from(nodeCrypto.hkdfSync('sha256', Buffer.from(devKey.replace(/^0x/, ''), 'hex'), Buffer.alloc(0), Buffer.from('proofsettle.dev-x25519.v1'), 32));
+  const privateKey = envelope.privateKeyFromRaw(seed);
+  const encRaw = envelope.rawPublicKey(nodeCrypto.createPublicKey(privateKey));
+  const { model, modelHash } = loadModel();
+  const BUILD = 'proofsettle-enclave/dev (unattested)';
+  const AAD_INPUT = Buffer.from('proofsettle.input.v1');
+
+  const rejected = (jobId: string, reason: string, detail: string | null) => {
+    const result = { v: 1, jobId, build: BUILD, rejected: reason, detail };
+    return { outcome: Outcome.Rejected, scoreBps: 0, resultHash: hashOf(result), resultCiphertext: null, rejection: result };
+  };
+
+  return {
+    wallet,
+    signer: wallet.address,
+    encryptionPublicKey: crypto.toHex(encRaw),
+    modelHash,
+    run(job: JobRequest) {
+      if (job.modelHash.toLowerCase() !== modelHash.toLowerCase()) return rejected(job.jobId, 'model-not-served', `this stand-in serves ${modelHash}`);
+      if (!job.ciphertext) return rejected(job.jobId, 'no-input', 'the payment carried no sealed input');
+      let plaintext: Buffer, ephemeralRaw: Buffer;
+      try {
+        ({ plaintext, ephemeralRaw } = envelope.open(privateKey, Buffer.from(job.ciphertext.replace(/^0x/, ''), 'hex'), AAD_INPUT));
+      } catch {
+        return rejected(job.jobId, 'input-undecryptable', 'the sealed input was not encrypted to this key');
+      }
+      const commitment = crypto.toHex(crypto.keccak256(plaintext));
+      if (commitment.toLowerCase() !== job.inputHash.toLowerCase()) return rejected(job.jobId, 'input-commitment-mismatch', `input hashes to ${commitment}, payment committed to ${job.inputHash}`);
+      let scored: any;
+      try { scored = score(model, JSON.parse(plaintext.toString('utf8'))); }
+      catch (e: any) { return rejected(job.jobId, 'input-invalid', String(e.message ?? e)); }
+      const result = { v: 1, jobId: job.jobId, build: BUILD, modelHash, inputHash: job.inputHash, decision: scored.decision, probability: scored.probability, scoreBps: scored.scoreBps, contributions: scored.contributions };
+      const resultHash = hashOf(result);
+      const resultCiphertext = crypto.toHex(envelope.seal(ephemeralRaw, Buffer.from(canonical(result), 'utf8'), Buffer.from('proofsettle.result.v1' + job.jobId.toLowerCase())).envelope);
+      return { outcome: Outcome.Accepted, scoreBps: 10_000, resultHash, resultCiphertext, rejection: undefined };
+    },
+  };
 }

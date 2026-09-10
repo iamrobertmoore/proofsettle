@@ -63,6 +63,28 @@ contract ComputeJobEscrowTest is Test {
         escrow.createJob{value: 0}(provider, MEASUREMENT, keccak256("model"), keccak256("input"));
     }
 
+    /// @notice The sealed applicant record rides behind the arguments, where the ABI decoder
+    /// ignores it. This is the whole premise of carrying encrypted input inside the payment
+    /// without changing the contract, so it is pinned here against the compiled decoder rather
+    /// than assumed from the ABI specification.
+    function test_accepts_a_sealed_record_appended_after_the_arguments() public {
+        bytes memory envelope = hex"01"; // version byte, then whatever the buyer sealed
+        for (uint256 i = 0; i < 90; i++) envelope = abi.encodePacked(envelope, bytes1(uint8(i)));
+        bytes memory data = abi.encodePacked(
+            abi.encodeCall(escrow.createJob, (provider, MEASUREMENT, keccak256("model"), keccak256("input"))),
+            envelope,
+            uint32(envelope.length),
+            bytes4("PSE1")
+        );
+        vm.expectEmit(false, true, true, true, address(escrow));
+        emit JobCreated(bytes32(0), payer, provider, 1 ether, MEASUREMENT, keccak256("model"), keccak256("input"));
+        vm.prank(payer);
+        (bool ok, bytes memory ret) = address(escrow).call{value: 1 ether}(data);
+        assertTrue(ok, "the decoder rejected trailing calldata");
+        assertEq(ret.length, 32, "createJob should still return the job id");
+        assertEq(address(escrow).balance, 1 ether, "payment was not held");
+    }
+
     function test_job_ids_are_unique_across_repeat_calls() public {
         bytes32 a = _create(1 ether);
         bytes32 b = _create(1 ether);

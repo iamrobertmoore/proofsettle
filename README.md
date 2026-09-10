@@ -29,6 +29,14 @@ returns the buyer's claim, partial splits it.
 
 Neither proof settles anything alone.
 
+The data never touches either chain in the clear. The applicant's record leaves the buyer's
+browser sealed to an encryption key that was generated inside the enclave and is named in its
+attestation, and it rides inside the payment transaction itself. The answer comes back sealed to
+a one-time key only that browser holds, riding inside the settlement transaction. What the chains
+carry is two commitments, `inputHash` and `resultHash`, and the buyer can open the answer and check
+it hashes to what the contract recorded. Nothing in between, the worker included, can read the
+record or the decision.
+
 ## Why this is not another bridge
 
 The Attestcoin tutorials teach one shape: burn a token on a source chain, prove it, mint on
@@ -40,6 +48,37 @@ a second, unrelated cryptographic system. Change what the buyer asked for on Sep
 settlement rule on Creditcoin changes with it, with no redeploy and no admin key.
 
 That is the difference between cross-chain data delivery and cross-chain business logic.
+
+## How the Attestcoin Protocol is used
+
+Four ways, all of them load-bearing rather than decorative.
+
+**The verifier precompile at `0x…0FD2` is the only thing that establishes the payment.** `settle`
+hands it the raw Sepolia transaction bytes, the Merkle proof and the continuity proof, and acts on
+nothing until it says yes. There is no relayer, no signed message from me, no allowlist of
+payers.
+
+**The proven transaction carries policy and data, not just a fact.** `requiredMeasurement`,
+`modelHash` and `inputHash` are read out of the proven `JobCreated` event and enforced against the
+enclave's signature. The sealed applicant record rides in the same transaction's calldata, behind
+the ABI-encoded arguments where the decoder ignores it, so the enclave receives its input through
+the same proof that pays for it. Two forge tests pin that the compiled decoder accepts the trailing
+bytes on both `createJob` and `settle`.
+
+**The `ChainInfo` precompile at `0x…0fd3` is read, not assumed.** The Sepolia chain key (1) comes
+from it at deploy time, the attested height comes from it while the worker and the desk page wait
+for a payment's block to land, and the verifier page reads it in the browser.
+
+**The worker builds its own proofs.** `@gluwa/usc-sdk`'s `RawProofBuilder` runs against a plain
+Sepolia RPC, with a block provider that falls back to per-transaction receipts when the node has
+no `eth_getBlockReceipts`. On the 24 August payment in this README it produced a proof **byte-identical**
+to the hosted Proof Builder's, in 92 seconds against 0.7. The hosted builder is the fallback, so
+the rail keeps settling if the service is down, and the comparison is reproducible with
+`RAW_PROOF_LIVE=1 node worker/test/raw-proof.live.mjs`.
+
+Writability, the return leg that would carry a settlement receipt back to Sepolia, is documented
+by Gluwa as "currently under third-party testing and audits" and is not on testnet, so it is not
+used here. The return path is a labelled conventional relayer; see below.
 
 ## Contracts
 
@@ -66,7 +105,7 @@ the off-chain worker rather than of the contract. A worker is not a guarantee.
 | `EvmV1Decoder` | Creditcoin CC3 testnet | [`0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40`](https://creditcoin-testnet.blockscout.com/address/0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40) |
 
 The three contracts I wrote are **verified on Blockscout**, so those links resolve to Solidity
-rather than bytecode, our events decode by name, and the refusal transaction shows its revert
+rather than bytecode, the events decode by name, and the refusal transaction shows its revert
 reason in full: `EnclaveNotAccepted(bytes32 requiredMeasurement, address recovered)` with both
 values named. Republish after any redeploy with `./script/verify-contracts.sh`, which reads the
 constructor arguments back off the chain rather than trusting a local file.
@@ -111,16 +150,24 @@ be fetched. The contract enforces the **binding**. Whether the registrar was rig
 binding is checkable by anyone holding the evidence, rather than taken on trust from this file.
 
 **The rail is one-directional today.** Attestcoin carries attested data from other chains into
-Creditcoin. Writability, which would carry a settlement receipt back out, is in final development
-and explicitly out of scope for this season, as the protocol team confirmed at the kickoff AMA.
-They also confirmed that a conventional return path is the right approach in the meantime, so the
-return leg is a plainly labelled conventional relayer and writability is the roadmap step that
-removes the last trusted component.
+Creditcoin. Writability, which would carry a settlement receipt back out, is documented at
+[docs.attestcoin.org](https://docs.attestcoin.org) as "currently under third-party testing and
+audits" and is not on testnet, which the protocol team confirmed at the kickoff AMA along with
+the advice that a conventional return path is right in the meantime. The relayer releases through
+late August did not change the documented status. So the return leg is a plainly labelled conventional
+relayer, and writability is the roadmap step that removes the last trusted component.
 
 **Development runs unattested unless you point it at a real enclave.** With `ENCLAVE_URL` unset the
-worker signs with a local development key and prints a warning on every run saying so. A silent
-fallback would let a demo appear to prove hardware attestation while proving nothing at all, which
-is the exact failure this project exists to make visible.
+worker derives a development signer and a development encryption key from one local secret, runs
+the same model and the same refusal logic in process, and prints a warning on every run saying so.
+A silent fallback would let a demo appear to prove hardware attestation while proving nothing at
+all, which is the exact failure this project exists to make visible.
+
+**The enclave is not verified by the chain, and the model is not a product.** The registry binds
+what the registrar verified; the attestation is checked by whoever holds the evidence, which the
+page makes easy. And the scorer is a small published logistic model over synthetic weights, there
+to make "the exact model you named is the one that ran" a checkable claim rather than to underwrite
+anyone.
 
 ## Verify it yourself
 
@@ -147,6 +194,56 @@ drives exactly that path in a real browser against a token it signs itself, then
 ways: a tampered signature, an image that does not match the registry, a debug image, and an
 absent token. A page that accepts a valid attestation and also accepts a tampered one has told you
 nothing, so the test is written to prove it can fail.
+
+## The desk: buy one decision and watch it settle
+
+**[proofsettle.pages.dev/desk.html](https://proofsettle.pages.dev/desk.html)** is the buyer's side.
+It reads the enclave's published identity (`site/enclave.json`) and checks it in the browser
+against the registry and against Google's live keys, including that the two enclave keys appear as
+nonces in the attestation token when the build supports that. You pick or type an applicant
+record, watch its commitment update, choose which build you will accept, pay 0.001 Sepolia ETH
+through MetaMask with the sealed record riding inside the payment, and then watch the page read
+every step off the two chains: mined on Sepolia, attested on Creditcoin, settled, and finally the
+answer opened with the one-time key the page generated when you paid and checked against the
+result hash on chain.
+
+Choose the previous, revoked build instead and the page finds the reverted settlement on
+Blockscout, replays it, and decodes `EnclaveNotAccepted` by name. That is the rail refusing to your
+face.
+
+The whole flow is driven in a real browser by `node site/test-desk.mjs`: the real enclave server,
+the real envelope cryptography on both sides (WebCrypto in the page, Node in the enclave), a
+stubbed wallet, and the two chains replayed from what they would say. Five scenarios, thirty-six
+checks, including a resume from a reload with only the saved key and an enclave refusal that rides
+in the clear.
+
+## Inside the enclave
+
+`enclave/` is what runs inside Google Confidential Space on AMD SEV, with no runtime dependencies,
+because a supply chain is a poor thing to put inside a trust boundary.
+
+At boot it generates two keys: a secp256k1 signing key and an X25519 encryption key. It asks the
+Confidential Space launcher for its attestation token with both public keys as nonces, so the
+token Google signs names the keys and not only the image (`eat_nonce`). A build that cannot reach
+the launcher socket falls back to the file token and says so in `/identity` as `nonceBound: false`;
+the verifier page and the register script report which one they got rather than assuming.
+
+The model is inside the image. `enclave/model.json` is a small logistic scorer over eight features
+a lender can compute from mobile money and supplier records, weighted towards behaviour rather
+than length of history because a thin file is the case it exists for. Its hash is
+`keccak256` of its canonical JSON, published in `/identity`, and it is the `modelHash` a buyer
+names in the payment. A payment naming any other model is refused, signed, and settled as
+Rejected so the buyer's claim comes straight back. The same goes for a record that does not open,
+does not hash to the commitment, or does not fit the model: five refusal reasons, each tested.
+
+The envelope is X25519 with an ephemeral key, HKDF-SHA256, AES-256-GCM, with the job id in the
+associated data of the result so an answer cannot be re-addressed to another job. The buyer's side
+is thirty lines of WebCrypto in the desk page and `worker/seal-input.mjs` for the command line;
+`worker/open-result.mjs` opens a settled job's answer off the chain and checks its hash.
+
+The model is deliberately modest and says so in its own description. The point is not its quality.
+It is that the exact model the buyer named is the one that ran, inside the exact build the buyer
+named, and that a hardware attestation and a public chain both say so.
 
 ## How much of the Attestcoin oracle is real application use
 
@@ -189,10 +286,16 @@ forge install foundry-rs/forge-std --no-git
 forge test
 ```
 
-**49 tests.** Every guarantee has a paired negative test, because a suite that only walks the happy
+**51 tests.** Every guarantee has a paired negative test, because a suite that only walks the happy
 path proves nothing about the guarantee.
 
-Four are worth calling out.
+Six are worth calling out.
+
+**`test_accepts_a_sealed_record_appended_after_the_arguments`** and
+**`test_settles_with_a_sealed_result_appended_after_the_arguments`.** The sealed record and the
+sealed answer ride behind the ABI-encoded arguments of `createJob` and `settle`. That the decoder
+ignores trailing calldata is a property of the compiled contract, not of the ABI specification, so
+both are pinned against the real bytecode with low-level calls.
 
 **`test_reverts_when_the_event_came_from_an_impostor_escrow`.** Anyone can deploy their own escrow,
 emit a perfectly well formed `JobCreated` naming themselves as provider for any amount, and obtain
@@ -239,25 +342,53 @@ caught.**
 The script refuses to pass if a mutation target no longer exists in the source, so a refactor
 cannot quietly turn a real check into a no-op.
 
-## One settlement, end to end, on the live network
+### Everything a judge can run
 
-A real job, paid for on Ethereum Sepolia, settled on Creditcoin against the Attestcoin oracle, with
-the result signed inside an attested Confidential Space enclave. Both transactions are public.
+```bash
+npm run judge:verify
+```
+
+One command, no key, no account. It runs the contract tests and the mutation check, the enclave
+tests (every refusal path, the sealed round trip, determinism), the worker's calldata tests, the
+launch-decision test for the deployment scripts, the three browser suites, verifies the committed
+attestation token against Google's live keys, and then reads the live state back off Creditcoin:
+the registry binding for the build the site names, the example settlement, the oracle's attested
+height, and that the previous build is no longer what the signer is bound to. A stage whose tool is
+missing is reported as a skip by name, never as a pass.
+
+## Settled, sealed, on the live network
+
+Three jobs on 10 September 2026, through enclave 1.2.0 with the record sealed in and the answer
+sealed out. Every transaction is public.
+
+**One from the command line**, the thin-file applicant, sealed by `script/first-settlement.sh`
+and opened afterwards with `worker/open-result.mjs`:
 
 | | |
 |---|---|
-| Payment | [`0x9f6c9980…f33e1`](https://sepolia.etherscan.io/tx/0x9f6c9980eea0878b4eba27c677fc8add83dd32fc5c2185dbe76506cce35f33e1) on Sepolia, block 11,558,244, tx index 175 |
-| Settlement | [`0xc77cf096…1426a`](https://creditcoin-testnet.blockscout.com/tx/0xc77cf096bc552f1c9eb2d1f407bf11e211aad58708325a23f92915c05621426a) on Creditcoin, block 5,366,783 |
-| Job id | `0xbd3c16183f8a976424135c8b43344ae65a2a590fa125bdc276ff755ea8125c3a` |
-| Enclave | `0xC7561c7e2809346fAffDf3B344FD921FDF98F65f`, measurement `0xc0a8e85a53c13a607b108683cd75ad896047a2b526d8ef64065bb27aac1396d0` |
-| Cost to settle | 468,426 gas at 0.5 gwei, so 0.000234 CTC |
+| Payment | [`0xcc8283fc…8ac1ce`](https://sepolia.etherscan.io/tx/0xcc8283fc167cf6ad4ce66b19b20e84a3640cb10c191cbdb58b461f6c978ac1ce) on Sepolia, block 11,673,891, tx index 75, with a 264 byte sealed record behind the arguments |
+| Settlement | [`0xef8191d1…166eb2`](https://creditcoin-testnet.blockscout.com/tx/0xef8191d1e33a8963e6c3d9c80d661b2159b10d0d28f08c93cf4628d51d166eb2) on Creditcoin, block 5,462,683, 486,430 gas, with a 926 byte sealed answer behind the arguments |
+| Job id | `0xb5b56cc8d8ee6c826e22b689a8b146b3e6f48e3d4e90650008080f391b9102a7` |
+| Result hash | `0x7f0eaaf88f72dc473a8037461707f7e32ab3954b3eef348701f1835e9c3dedd5`, and the opened answer hashes to it: `approve`, probability 0.755146 |
+| Enclave | `0x986fb1b97e1ae22585a8c9f80d6f44bfc2e884dd`, measurement `0xea75311ddf00a6514edcb8d35cd9de829a46f2ad7d2dcc3987a4d73c2c91b741` |
+| Proof | Built by the worker itself, 8 siblings and 10 continuity roots, not fetched from the hosted builder |
 
-The four logs that transaction emitted are the whole argument in order, and anyone can read them
-off chain:
+**One from the desk**, paid from an ordinary MetaMask wallet in a browser, with the answer opened
+in that browser and nowhere else:
 
-1. `TransactionVerified(1, 11558244, 175)` from the Attestcoin verifier precompile at
-   `0x…0FD2`. The protocol itself, not this project, attesting that the Sepolia payment is real.
-2. `ProofConsumed(queryId, 11558244, 175)` from `ComputeSettlement`, marking that query spent, so
+| | |
+|---|---|
+| Payment | [`0xda683013…d2da99`](https://sepolia.etherscan.io/tx/0xda6830136c8ae625f6943a3e70158c699cb05bbf94324ab93bcba100b5d2da99) on Sepolia, block 11,674,495 |
+| Settlement | [`0xbfe84268…597f6`](https://creditcoin-testnet.blockscout.com/tx/0xbfe84268a6f80f0ca2262eefb7f33ec7bd52b6eb9001c03a2742e3a63f2597f6) on Creditcoin, block 5,463,175, 484,638 gas |
+| Job id | `0x34c210a108481772dac755f9b46863a293daee5b2e14db9718fa41936a45d487` |
+| Watch it | [proofsettle.pages.dev/desk?tx=0xda6830…](https://proofsettle.pages.dev/desk.html?tx=0xda6830136c8ae625f6943a3e70158c699cb05bbf94324ab93bcba100b5d2da99) reads every step off both chains. The answer itself opens only in the browser that paid, which is the point. |
+
+The four logs a settlement emits are the whole argument in order, and anyone can read them off
+chain:
+
+1. `TransactionVerified(1, 11673891, 75)` from the Attestcoin verifier precompile at `0x…0FD2`.
+   The protocol itself, not this project, attesting that the Sepolia payment is real.
+2. `ProofConsumed(queryId, 11673891, 75)` from `ComputeSettlement`, marking that query spent, so
    the same proof cannot settle a second time.
 3. `JobSettled(jobId, provider, enclave, …)` carrying the enclave signing key that the registry
    confirmed was permitted by *the buyer's own policy*, taken from the proven Sepolia event.
@@ -267,24 +398,36 @@ off chain:
 Both proofs were checked in that single transaction. Neither half could have settled without the
 other.
 
+The first settlement ever made on this rail, on 24 August through enclave 1.1.0 before the model
+and the envelope existed, is [`0xc77cf096…1426a`](https://creditcoin-testnet.blockscout.com/tx/0xc77cf096bc552f1c9eb2d1f407bf11e211aad58708325a23f92915c05621426a)
+for job `0xbd3c1618…25c3a`. It still verifies on the page.
+
 ## And here it is refusing
 
-Success is the easy half. A second job was created where the buyer demanded a **different** enclave
-build, the same enclave answered it, and the settlement contract rejected it on a public chain:
+Success is the easy half. **The third job demanded the previous build**, 1.1.0, which I had
+revoked that morning with the reason on chain
+([`0xa1d4eb78…058c9`](https://creditcoin-testnet.blockscout.com/tx/0xa1d4eb78ac1eb49b73db338f66badf49e0872a26ea726a6242e03681f92058c9),
+"superseded by proofsettle-enclave/1.2.0: model inside the image, sealed input and output, keys
+generated inside the enclave"). The live 1.2.0 enclave opened the record, scored it and signed
+anyway. The settlement contract read the buyer's requirement out of the proven payment and refused
+the signature by name, on a public chain:
 
 | | |
 |---|---|
-| Refused settlement | [`0xda7d9942…894af`](https://creditcoin-testnet.blockscout.com/tx/0xda7d994268a841fcd1a5a7a3d9366e8e4027501f635fdcc20bfb91ddd9d894af), block 5,367,004, status 0, 410,858 gas |
-| Reason | `EnclaveNotAccepted(0x29f228be…, 0xC7561c7e…)` |
+| Payment | [`0x0316007e…f34bc2`](https://sepolia.etherscan.io/tx/0x0316007e407533b2252f2a40fbeb31ac1bc67d9836ad69c2d1c09c89bef34bc2) on Sepolia, block 11,674,182, demanding measurement `0xc0a8e85a…96d0` |
+| Refused settlement | [`0xaab7768b…ccb87a`](https://creditcoin-testnet.blockscout.com/tx/0xaab7768bc58f7968def2d0a68d530f8b15269e8374a8b56ab112c3e78fccb87a), block 5,462,957, status 0, 416,682 gas |
+| Reason | `EnclaveNotAccepted(0xc0a8e85a…96d0, 0x986fb1b9…884dd)` |
+| Job id | `0x74f22866ce424a2eca10524468661cb000bedde997efac956300e7a98726ef96` |
 
 That error names both halves of the disagreement: the build the buyer demanded, and the key that
-actually signed. Note which way round it is. **The build the buyer asked for there was the weaker
-one**, the unattested development key from earlier in the day, and the attested enclave's answer was
-refused anyway. The contract holds no opinion about which build is better. It enforces the one the
-buyer named, and nothing else.
+actually signed. The contract holds no opinion about which build is better or newer. It enforces
+the one the buyer named, and nothing else. The buyer's claim stays in the Sepolia escrow and is
+reclaimable after the refund delay.
 
 The refusal is mined rather than simulated on purpose. A local revert proves nothing to anyone who
-was not at the keyboard.
+was not at the keyboard. The first refusal on this rail, on 24 August, where the buyer demanded an
+unattested development key and the attested 1.1.0 enclave was refused for it, is
+[`0xda7d9942…894af`](https://creditcoin-testnet.blockscout.com/tx/0xda7d994268a841fcd1a5a7a3d9366e8e4027501f635fdcc20bfb91ddd9d894af).
 
 **The enclave is real.** The measurement bound on chain is the container image digest itself, so
 there is no indirection to take on trust: pull the image, read its digest, compare. The
@@ -295,8 +438,9 @@ node enclave/verify-token.mjs enclave/attestation.jwt
 ```
 
 verifies it against Google's published keys and prints what it actually claims: `GCP_AMD_SEV`,
-secure boot on, and `dbgstat: disabled-since-boot`, which means a production Confidential Space
-image rather than the debug one. The token expires, which is worth saying plainly: an expired token
+secure boot on, `dbgstat: disabled-since-boot`, which means a production Confidential Space image
+rather than the debug one, and an `eat_nonce` claim carrying the enclave's signing key and
+encryption key, so Google's signature covers the keys and not only the image. The token expires, which is worth saying plainly: an expired token
 is a historical record of what was running, not a live proof that it still is.
 
 ## Verified against the live network
@@ -320,11 +464,11 @@ proof and also accepts a corrupted one has told you nothing, so both were tested
 
 ```
 src/         the contracts
-test/        49 tests, plus the fixtures taken from the live prover and the real enclave
-script/      deployment, and the reproducible measurement
-worker/      the off-chain worker that watches, proves and settles
-enclave/     the attested compute service, its Dockerfile and its Confidential Space scripts
-site/        the public verify-it-yourself page
+test/        51 tests, plus the fixtures taken from the live prover and the real enclave
+script/      deployment, the reproducible measurement, and judge-verify.sh
+worker/      the off-chain worker that watches, builds raw proofs and settles; seal and open CLIs
+enclave/     the attested compute service: model, envelope, server, Dockerfile, deploy scripts, tests
+site/        the verifier page, the desk, and their browser suites
 ```
 
 ## Deploying

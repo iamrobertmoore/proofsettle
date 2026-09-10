@@ -34,7 +34,8 @@ createServer((req, res) => {
   res.writeHead(200, {'content-type':'application/json'});
   if (req.url === '/health')   return res.end(JSON.stringify({ ok: true, signer: '0x' + 'aa'.repeat(20) }));
   if (req.url === '/identity') return res.end(JSON.stringify({
-    build: 'test', signer: '0x' + 'aa'.repeat(20), attested: true, attestationToken: TOKEN }));
+    build: 'test', signer: '0x' + 'aa'.repeat(20), encryptionPublicKey: '0x' + 'bb'.repeat(32), modelHash: '0x' + 'cc'.repeat(32),
+    attested: true, nonceBound: false, attestationToken: TOKEN }));
   res.end('{}');
 }).listen(8080);
 console.log('harness up, attesting', DIGEST);

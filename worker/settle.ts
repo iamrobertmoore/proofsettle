@@ -2,25 +2,35 @@
  * ProofSettle off-chain worker.
  *
  * Watches ComputeJobEscrow on Ethereum Sepolia, waits for the Attestcoin oracle to attest the
- * block containing each payment, pulls the inclusion proof from the prover service, obtains the
- * enclave's signed verdict, and submits both to ComputeSettlement on Creditcoin.
+ * block containing each payment, builds the inclusion proof, obtains the enclave's signed verdict,
+ * and submits both to ComputeSettlement on Creditcoin.
  *
  * The worker is deliberately not trusted with anything. It cannot forge a payment, because the
  * proof is verified on chain by the Attestcoin precompile. It cannot forge a verdict, because the
- * verdict is inside the enclave's signature. Its only power is to submit or to fail to submit, and
- * a failure is visible because the job never settles.
+ * verdict is inside the enclave's signature. It cannot read the buyer's input or the enclave's
+ * result, because both are sealed to keys it does not hold: the input rides in the calldata of the
+ * payment, the result rides in the calldata of the settlement, and the worker carries each from
+ * one chain to the other without being able to open either. Its only power is to submit or to
+ * fail to submit, and a failure is visible because the job never settles.
+ *
+ * Proofs are built locally from Sepolia receipts and headers by default, with Gluwa's hosted Proof
+ * Builder as the fallback. The hosted service is a convenience, not a trusted party: the proof it
+ * returns is byte-identical to the one built here, and either way the precompile is what checks
+ * it. PROOF_SOURCE=service forces the hosted builder; PROOF_SOURCE=raw forbids the fallback.
  *
  * Usage:
  *   npx tsx worker/settle.ts watch            follow new jobs as they appear
  *   npx tsx worker/settle.ts once <txHash>    settle a single known payment
  */
 import 'dotenv/config';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { Contract, EventLog, JsonRpcProvider, Wallet, ethers } from 'ethers';
 import { chainInfo, proofProvider } from '@gluwa/usc-sdk';
 
 import escrowAbi from '../out/ComputeJobEscrow.sol/ComputeJobEscrow.json' with { type: 'json' };
 import settlementAbi from '../out/ComputeSettlement.sol/ComputeSettlement.json' with { type: 'json' };
 import { signResult, Outcome } from './enclave-client.js';
+import { PatientBlockProvider } from './block-provider.js';
 
 const need = (k: string): string => {
   const v = process.env[k];
@@ -32,6 +42,11 @@ const CC_RPC = process.env.CREDITCOIN_RPC_URL ?? 'https://rpc.cc3-testnet.credit
 const SEPOLIA_RPC = process.env.SOURCE_CHAIN_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
 const PROVER = process.env.PROOF_BUILDER_URL ?? 'https://prover.cc3-testnet.creditcoin.network';
 const CHAIN_KEY = Number(process.env.SOURCE_CHAIN_KEY ?? 1);
+const PROOF_SOURCE = (process.env.PROOF_SOURCE ?? 'raw-then-service') as 'raw' | 'service' | 'raw-then-service';
+const STATE_FILE = process.env.WORKER_STATE_FILE ?? '.worker-state.json';
+
+/** The envelope trailer format is defined once, in the enclave, and read from there. */
+const envelopeMod = import('../enclave/envelope.mjs');
 
 const POLL_MS = 20_000;
 /** Attestation runs 7 to 9 minutes behind Sepolia, measured, so nothing is gained by polling hard. */
@@ -62,8 +77,10 @@ async function main() {
   const escrow = new Contract(need('SOURCE_ESCROW_ADDRESS'), (escrowAbi as any).abi, sepolia);
   const settlement = new Contract(need('SETTLEMENT_ADDRESS'), (settlementAbi as any).abi, wallet);
 
-  const info = new chainInfo.PrecompileChainInfoProvider(cc);
-  const prover = new proofProvider.service.ProofBuilder(CHAIN_KEY, PROVER);
+  // The SDK bundles its own copy of ethers, so its provider types are nominally different from
+  // ours. Same class at runtime; the cast is only for the type checker.
+  const info = new chainInfo.PrecompileChainInfoProvider(cc as any);
+  const proofs = makeProofSource(sepolia, info);
 
   console.log('ProofSettle worker');
   console.log(`  creditcoin  ${CC_RPC}`);
@@ -71,6 +88,7 @@ async function main() {
   console.log(`  escrow      ${await escrow.getAddress()}`);
   console.log(`  settlement  ${await settlement.getAddress()}`);
   console.log(`  worker      ${wallet.address}`);
+  console.log(`  proofs      ${proofs.describe}`);
 
   // Fail loudly rather than silently doing nothing all day.
   const bal = await cc.getBalance(wallet.address);
@@ -80,13 +98,13 @@ async function main() {
   if (mode === 'once') {
     const txHash = process.argv[3]!;
     const expectRefusal = process.argv.includes('--expect-refusal');
-    await settleOne(txHash, { cc, sepolia, settlement, info, prover, expectRefusal });
+    await settleOne(txHash, { cc, sepolia, settlement, info, proofs, wallet, expectRefusal });
     return;
   }
 
-  let fromBlock = Number(process.env.WORKER_FROM_BLOCK ?? (await sepolia.getBlockNumber()));
+  let fromBlock = Number(process.env.WORKER_FROM_BLOCK ?? readCursor() ?? (await sepolia.getBlockNumber()));
   const seen = new Set<string>();
-  console.log(`watching from Sepolia block ${fromBlock}\n`);
+  console.log(`watching from Sepolia block ${fromBlock} (cursor in ${STATE_FILE})\n`);
 
   for (;;) {
     try {
@@ -99,7 +117,7 @@ async function main() {
           seen.add(ev.transactionHash);
           console.log(`\nJobCreated in ${ev.transactionHash} (block ${ev.blockNumber})`);
           try {
-            await settleOne(ev.transactionHash, { cc, sepolia, settlement, info, prover });
+            await settleOne(ev.transactionHash, { cc, sepolia, settlement, info, proofs, wallet });
           } catch (e: any) {
             // One job failing must not stop the worker. Report it, keep going, leave it unsettled
             // and visible rather than swallowed.
@@ -107,6 +125,7 @@ async function main() {
           }
         }
         fromBlock = head + 1;
+        writeCursor(fromBlock);
       }
     } catch (e: any) {
       console.error(`poll error: ${e.shortMessage ?? e.message ?? e}`);
@@ -120,7 +139,8 @@ interface Ctx {
   sepolia: JsonRpcProvider;
   settlement: Contract;
   info: chainInfo.PrecompileChainInfoProvider;
-  prover: proofProvider.service.ProofBuilder;
+  proofs: ProofSource;
+  wallet: Wallet;
   /**
    * Demand that this settlement be refused, and treat success as the failure.
    *
@@ -133,7 +153,7 @@ interface Ctx {
 }
 
 async function settleOne(txHash: string, ctx: Ctx) {
-  const { sepolia, settlement, info, prover } = ctx;
+  const { sepolia, settlement, info, proofs } = ctx;
 
   const tx = await sepolia.getTransaction(txHash);
   if (!tx) throw new Error(`transaction ${txHash} not found on Sepolia`);
@@ -153,29 +173,37 @@ async function settleOne(txHash: string, ctx: Ctx) {
     return;
   }
 
+  // The buyer's sealed input is whatever follows the ABI-encoded arguments in the payment's
+  // calldata. The worker carries it to the enclave without being able to read it.
+  const { fromTrailer, withTrailer } = await envelopeMod;
+  const sealedInput = fromTrailer(Buffer.from(tx.data.slice(2), 'hex'));
+  const ciphertext = sealedInput ? '0x' + sealedInput.toString('hex') : undefined;
+  console.log(ciphertext ? `  sealed input ${sealedInput!.length} bytes, riding in the payment` : '  no sealed input in the payment');
+
   // 1. Ask the enclave to run the job and sign the outcome. The worker never sees the signing key
-    // and cannot alter the verdict without invalidating the signature.
+  //    and cannot alter the verdict without invalidating the signature.
   const att = await signResult({
     jobId: job.jobId,
     modelHash: job.modelHash,
     inputHash: job.inputHash,
     settlementAddress: await settlement.getAddress(),
     chainId: Number((await ctx.cc.getNetwork()).chainId),
+    ciphertext,
   });
   console.log(`  enclave verdict: ${Outcome[att.outcome]} score ${att.scoreBps}bps result ${att.resultHash}`);
+  if (att.rejection) console.log(`  enclave refused: ${att.rejection.rejected}${att.rejection.detail ? ', ' + att.rejection.detail : ''}`);
+  if (att.resultCiphertext) console.log(`  result sealed to the buyer, ${(att.resultCiphertext.length - 2) / 2} bytes. The worker cannot read it.`);
 
   // 2. Wait for the Attestcoin oracle. Measured cadence is a batch of 10 Sepolia blocks every
   //    113 to 123 seconds, so this normally resolves in 7 to 9 minutes.
   const latest = await info.getLatestAttestedHeightAndHash(CHAIN_KEY);
   console.log(`  attested height ${latest.height}, need ${tx.blockNumber} (${tx.blockNumber - latest.height} to go)`);
-  await prover.waitUntilHeightAttested(CHAIN_KEY, tx.blockNumber, ATTEST_POLL_MS, ATTEST_TIMEOUT_MS);
+  await waitUntilAttested(info, tx.blockNumber);
   console.log('  attested');
 
-  // 3. Pull the inclusion proof.
-  const proof = await prover.getProof(txHash);
-  if (!proof.success || !proof.data) throw new Error(`prover refused: ${proof.error}`);
-  const d = proof.data;
-  console.log(`  proof: block ${d.headerNumber} txIndex ${d.txIndex}, ${d.merkleProof.siblings.length} siblings, ${d.continuityProof.roots.length} continuity roots`);
+  // 3. Build the inclusion proof.
+  const { data: d, source } = await proofs.get(txHash);
+  console.log(`  proof (${source}): block ${d.headerNumber} txIndex ${d.txIndex}, ${d.merkleProof.siblings.length} siblings, ${d.continuityProof.roots.length} continuity roots`);
 
   // 4. Submit both proofs in one transaction.
   const merkleProof = {
@@ -213,10 +241,11 @@ async function settleOne(txHash: string, ctx: Ctx) {
     }
     console.log(`  simulated refusal: ${simulated}`);
 
-    const sent = await settlement.settle(
-      CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation,
-      { gasLimit: 700_000n }
-    );
+    const sent = await ctx.wallet.sendTransaction({
+      to: await settlement.getAddress(),
+      data: settlement.interface.encodeFunctionData('settle', [CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation]),
+      gasLimit: 700_000n,
+    });
     console.log(`  submitted ${sent.hash}`);
     const rc = await ctx.cc.waitForTransaction(sent.hash);
     if (!rc) throw new Error('no receipt');
@@ -237,23 +266,33 @@ async function settleOne(txHash: string, ctx: Ctx) {
     return;
   }
 
+  // The sealed result rides after the ABI-encoded arguments, where the decoder ignores it and the
+  // buyer's browser reads it back off the chain. Same trick as the input, in the other direction.
+  // An accepted result rides sealed (envelope version 0x01). A refusal has no key to seal to and
+  // nothing secret in it, so it rides in the clear as canonical JSON behind a 0x02 byte, and the
+  // buyer's browser checks its hash against the one the chain carries.
+  const rider = att.resultCiphertext
+    ? Buffer.from(att.resultCiphertext.slice(2), 'hex')
+    : att.rejection
+      ? Buffer.concat([Buffer.from([0x02]), Buffer.from((await import('../enclave/model.mjs')).canonical(att.rejection), 'utf8')])
+      : null;
+  const data = settlement.interface.encodeFunctionData('settle', [CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation])
+    + (rider ? withTrailer(rider).toString('hex') : '');
+  const to = await settlement.getAddress();
+
   let gasLimit: bigint;
   try {
-    const est = await settlement.settle.estimateGas(
-      CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation
-    );
+    const est = await ctx.wallet.estimateGas({ to, data });
     gasLimit = (est * 135n) / 100n;
     console.log(`  gas estimate ${est}, limit ${gasLimit}`);
   } catch (e: any) {
     // pallet-evm does not always propagate revert reasons during estimation. The examples repo
     // documents the same behaviour, so a failed estimate is not a failed call.
-    gasLimit = BigInt(21_000 + d.continuityProof.roots.length * 5_000 + 400_000);
+    gasLimit = BigInt(21_000 + d.continuityProof.roots.length * 5_000 + 400_000 + data.length * 8);
     console.warn(`  gas estimation failed (${e.shortMessage ?? e.message}), using ${gasLimit}`);
   }
 
-  const sent = await settlement.settle(
-    CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation, { gasLimit }
-  );
+  const sent = await ctx.wallet.sendTransaction({ to, data, gasLimit });
   console.log(`  submitted ${sent.hash}`);
 
   const rc = await ctx.cc.waitForTransaction(sent.hash);
@@ -295,6 +334,58 @@ async function settleOne(txHash: string, ctx: Ctx) {
   console.log(`           provider ${ethers.formatEther(parsed.args.paidToProvider)}`);
   console.log(`           payer    ${ethers.formatEther(parsed.args.returnedToPayer)}`);
   console.log(`           enclave  ${parsed.args.enclave}`);
+}
+
+interface ProofSource {
+  describe: string;
+  get(txHash: string): Promise<{ data: proofProvider.ContinuityResponse; source: 'raw' | 'service' }>;
+}
+
+/**
+ * Local first, hosted second. The raw builder reads Sepolia receipts and headers itself and
+ * produces the same bytes the service would, so the service is only ever a convenience.
+ */
+function makeProofSource(sepolia: JsonRpcProvider, info: chainInfo.PrecompileChainInfoProvider): ProofSource {
+  const raw = new proofProvider.raw.RawProofBuilder(
+    CHAIN_KEY, new PatientBlockProvider(sepolia), info, proofProvider.raw.EncodingVersion.V1
+  );
+  const service = new proofProvider.service.ProofBuilder(CHAIN_KEY, PROVER);
+  const tryOne = async (name: 'raw' | 'service', p: { getProof(h: string): Promise<proofProvider.ProofResult> }, h: string) => {
+    const r = await p.getProof(h);
+    if (!r.success || !r.data) throw new Error(`${name} proof builder refused: ${r.error}`);
+    return { data: r.data, source: name };
+  };
+  const order: Array<['raw' | 'service', any]> =
+    PROOF_SOURCE === 'raw' ? [['raw', raw]] : PROOF_SOURCE === 'service' ? [['service', service]] : [['raw', raw], ['service', service]];
+  return {
+    describe: order.map(([n]) => n).join(' then ') + (order.length === 1 ? ' only' : ''),
+    async get(txHash) {
+      let last: any;
+      for (const [name, p] of order) {
+        try { return await tryOne(name, p, txHash); }
+        catch (e: any) { last = e; console.warn(`  ${name} proof builder failed: ${e.shortMessage ?? e.message}`); }
+      }
+      throw last;
+    },
+  };
+}
+
+/** Wait for the Attestcoin oracle to attest the block, reading the precompile directly. */
+async function waitUntilAttested(info: chainInfo.PrecompileChainInfoProvider, height: number) {
+  const deadline = Date.now() + ATTEST_TIMEOUT_MS;
+  for (;;) {
+    const latest = await info.getLatestAttestedHeightAndHash(CHAIN_KEY);
+    if (Number(latest.height) >= height) return;
+    if (Date.now() > deadline) throw new Error(`block ${height} was not attested within ${ATTEST_TIMEOUT_MS / 60000} minutes (attested height ${latest.height})`);
+    await new Promise((r) => setTimeout(r, ATTEST_POLL_MS));
+  }
+}
+
+function readCursor(): number | undefined {
+  try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')).fromBlock; } catch { return undefined; }
+}
+function writeCursor(fromBlock: number) {
+  try { writeFileSync(STATE_FILE, JSON.stringify({ fromBlock, updatedAt: new Date().toISOString() })); } catch {}
 }
 
 const JOB_CREATED_TOPIC = ethers.id('JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32)');

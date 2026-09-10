@@ -89,6 +89,8 @@ console.log(`  secure boot       ${claims.secboot ?? '(absent)'}`);
 console.log(`  software          ${claims.swname ?? '?'} ${claims.swversion ?? ''}`);
 console.log(`  debug status      ${claims.dbgstat ?? '(absent)'}`);
 console.log(`  restart policy    ${container.restart_policy ?? '(absent)'}`);
+const nonces = [].concat(claims.eat_nonce ?? []);
+console.log(`  key binding       ${nonces.length ? nonces.join(', ') : '(no eat_nonce: this token proves the image, and the image asserts its keys)'}`);
 
 if (claims.dbgstat && claims.dbgstat !== 'disabled-since-boot') {
   console.log('');
@@ -102,6 +104,10 @@ const evidenceHash = toHex(keccak256(Buffer.from(token, 'utf8')));
 console.log('');
 console.log('for the registry');
 console.log(`  ENCLAVE_MEASUREMENT=${measurement}`);
+for (const n of nonces) {
+  if (/^0x[0-9a-fA-F]{40}$/.test(n)) console.log(`  ENCLAVE_SIGNING_KEY=${n}    (bound by Google, from eat_nonce)`);
+  if (/^0x[0-9a-fA-F]{64}$/.test(n)) console.log(`  ENCLAVE_ENCRYPTION_KEY=${n}    (bound by Google, from eat_nonce)`);
+}
 console.log(`  ENCLAVE_EVIDENCE_HASH=${evidenceHash}`);
 console.log('');
 console.log('The measurement is the container image digest itself, so it is checkable against the');

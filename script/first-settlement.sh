@@ -196,8 +196,33 @@ if [ -n "${REQUIRED_MEASUREMENT:-}" ]; then
     ENCLAVE_MEASUREMENT="$REQUIRED_MEASUREMENT"
 fi
 
-MODEL_HASH="$(cast keccak "llama-3.1-8b-instruct")"
-INPUT_HASH="$(cast keccak "proofsettle demo prompt, $(cast block-number --rpc-url "$SOURCE_CHAIN_RPC_URL")")"
+# The model and the encryption key come from whoever will run the job: the enclave's /identity,
+# or the development stand-in's, which derives the same shape of identity from its key. The
+# applicant record is sealed to that key and rides inside the payment, exactly as the desk page
+# does it in a browser; the chain only ever sees keccak256 of the record.
+if [ -n "$ENCLAVE_URL" ]; then
+    identity="$(curl -sf --max-time 10 "${ENCLAVE_URL}/identity")" || fail "could not reach ${ENCLAVE_URL}/identity"
+else
+    identity="$(npx tsx worker/dev-identity.ts)" || fail "could not derive the development identity"
+fi
+MODEL_HASH="$(printf '%s' "$identity" | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).modelHash??""))')"
+ENC_KEY="$(printf '%s' "$identity" | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).encryptionPublicKey??""))')"
+[ -n "$MODEL_HASH" ] || fail "the identity names no model hash. Is this an enclave build before 1.2.0? Rebuild and re-register."
+[ -n "$ENC_KEY" ]    || fail "the identity has no encryption key, so there is nothing to seal the record to."
+
+# The applicant. Override with SAMPLE_RECORD='{...}' to score somebody else.
+# Not ${SAMPLE_RECORD:=...}: the default word inside that expansion goes through quote removal,
+# which stripped every double quote out of the JSON and left seal-input.mjs a syntax error.
+if [ -z "${SAMPLE_RECORD:-}" ]; then
+    SAMPLE_RECORD='{"months_of_history":6,"inflows_per_month":14,"inflow_regularity":0.75,"avg_monthly_inflow_usd":300,"balance_volatility":0.4,"supplier_on_time_ratio":0.8,"prior_loans_repaid":0,"prior_loans_defaulted":0}'
+fi
+sealed="$(node worker/seal-input.mjs "$ENC_KEY" "$SAMPLE_RECORD")" || fail "could not seal the record"
+INPUT_HASH="$(printf '%s' "$sealed" | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).inputHash))')"
+SUFFIX="$(printf '%s' "$sealed" | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).calldataSuffix))')"
+JOB_KEY="$(printf '%s' "$sealed" | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).ephemeralPrivateKey))')"
+
+CALLDATA="$(cast calldata "createJob(address,bytes32,bytes32,bytes32)" \
+    "$PROVIDER_ADDRESS" "$ENCLAVE_MEASUREMENT" "$MODEL_HASH" "$INPUT_HASH")${SUFFIX}"
 
 sep_bal="$(cast balance "$BUYER_ADDRESS" --rpc-url "$SOURCE_CHAIN_RPC_URL")"
 say ""
@@ -205,12 +230,10 @@ say "4/4 creating a job on Sepolia"
 say "    buyer    $BUYER_ADDRESS, $(cast from-wei "$sep_bal") ETH"
 say "    value    $JOB_VALUE"
 say "    model    $MODEL_HASH"
-say "    input    $INPUT_HASH"
+say "    input    $INPUT_HASH  (keccak256 of the record; the record rides sealed, $(( ${#SUFFIX} / 2 )) bytes)"
 
 logf="$(mktemp)"
-if ! cast send "$SOURCE_ESCROW_ADDRESS" \
-        "createJob(address,bytes32,bytes32,bytes32)" \
-        "$PROVIDER_ADDRESS" "$ENCLAVE_MEASUREMENT" "$MODEL_HASH" "$INPUT_HASH" \
+if ! cast send "$SOURCE_ESCROW_ADDRESS" "$CALLDATA" \
         --value "$JOB_VALUE" \
         --rpc-url "$SOURCE_CHAIN_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" \
         --json >"$logf" 2>&1; then
@@ -229,7 +252,10 @@ rm -f "$logf"
 [ -n "$TX_HASH" ] || fail "the job transaction was sent but I could not read its hash back. Check Sepolia for $BUYER_ADDRESS before re-running, so you do not pay twice."
 [ "$STATUS" = "0x1" ] || fail "job transaction $TX_HASH did not succeed (status $STATUS)"
 
-put_env DEMO_JOB_TX "$TX_HASH"
+put_env DEMO_JOB_TX  "$TX_HASH"
+# The one-time key the answer comes back sealed to. Without it the settlement's result rider is
+# just bytes; with it, worker/open-result.mjs turns it back into the decision.
+put_env DEMO_JOB_KEY "$JOB_KEY"
 
 say "    tx       $TX_HASH"
 if [ -n "$BLOCK" ]; then say "    block    $((BLOCK))"; fi
@@ -245,6 +271,10 @@ say ""
 say "That waits for the Attestcoin oracle to attest the Sepolia block the payment landed in,"
 say "which is 7 to 9 minutes, then submits the inclusion proof and the signed verdict together"
 say "in one Creditcoin transaction. It prints every stage as it goes."
+say ""
+say "Then open the sealed answer it carried, with the one-time key saved as DEMO_JOB_KEY:"
+say ""
+say "    node worker/open-result.mjs <jobId from the worker's output> \$DEMO_JOB_KEY"
 say ""
 if [ -n "$ENCLAVE_URL" ]; then
     say "The worker will call the enclave over HTTP, so no unattested warning appears. It is not true."

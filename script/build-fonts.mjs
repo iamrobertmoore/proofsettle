@@ -39,7 +39,7 @@ const BEGIN = '/* FONTS:BEGIN */';
 const END = '/* FONTS:END */';
 let touched = 0;
 
-for (const rel of ['deck/deck.html', 'site/index.html']) {
+for (const rel of ['deck/deck.html', 'site/index.html', 'site/desk.html']) {
   const path = join(ROOT, rel);
   const src = readFileSync(path, 'utf8');
   const a = src.indexOf(BEGIN);

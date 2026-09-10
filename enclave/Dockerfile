@@ -16,7 +16,7 @@ WORKDIR /app
 
 # No package.json and no install step. The enclave has zero runtime dependencies on purpose: a
 # supply chain is a poor thing to put inside a trust boundary.
-COPY crypto.mjs server.mjs ./
+COPY crypto.mjs envelope.mjs model.mjs model.json server.mjs ./
 
 ENV PORT=8080
 EXPOSE 8080

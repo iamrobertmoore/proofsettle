@@ -1,8 +1,8 @@
 {
-  "PAYMENT_TX": "0x9f6c9980eea0878b4eba27c677fc8add83dd32fc5c2185dbe76506cce35f33e1",
-  "PAYMENT_BLOCK": "11,558,244",
-  "SETTLE_TX": "0xc77cf096bc552f1c9eb2d1f407bf11e211aad58708325a23f92915c05621426a",
-  "GAS": "468,426",
-  "SIGNER_LINE": "<b>An attested Confidential Space enclave</b> on AMD SEV, secure boot on, debug disabled since boot. Its measurement is the container image digest, <span class=\"mono\">0xc0a8e85a…0</span>, and the Google-signed token that says so is committed in the repository.",
+  "PAYMENT_TX": "0xcc8283fc167cf6ad4ce66b19b20e84a3640cb10c191cbdb58b461f6c978ac1ce",
+  "PAYMENT_BLOCK": "11,673,891",
+  "SETTLE_TX": "0xef8191d1e33a8963e6c3d9c80d661b2159b10d0d28f08c93cf4628d51d166eb2",
+  "GAS": "486,430",
+  "SIGNER_LINE": "<b>An attested Confidential Space enclave</b> on AMD SEV, secure boot on, debug disabled since boot. Its measurement is the container image digest, <span class=\"mono\">0xea75311d\u202691b741</span>, and the Google-signed token that says so, with both enclave keys in its nonces, is committed in the repository.",
   "SITE_URL": "proofsettle.pages.dev"
 }

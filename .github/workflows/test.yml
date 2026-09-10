@@ -36,6 +36,13 @@ jobs:
       - name: Mutation check
         run: ./script/mutation-check.sh
 
+      # The enclave outside an enclave: every refusal path, the sealed round trip to the buyer's
+      # one-time key, and determinism. Then the calldata riders the worker and the desk exchange.
+      - name: Enclave and worker
+        run: |
+          node --test enclave/test/enclave.test.mjs
+          node --test worker/test/calldata.test.mjs
+
       # The deployment scripts are tested too. Not by creating infrastructure, but by exercising
       # the decision they make against a scripted stand-in for gcloud and a fake enclave serving a
       # real, locally signed attestation token.

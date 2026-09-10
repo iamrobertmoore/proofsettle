@@ -1,0 +1,18 @@
+{
+  "name": "proofsettle-thin-file-scorer",
+  "version": "1.1.0",
+  "kind": "logistic-regression",
+  "description": "A small credit-scoring model for applicants with no credit file, over features a lender can compute from mobile money and supplier records. It is deliberately weighted towards behaviour (regular inflows, suppliers paid on time, no defaults) rather than length of history, because a thin file is the case it exists for. Weights were fitted on synthetic data and are published so anyone can recompute the model hash and rerun a score. The point of this model is not its quality. It is that the exact model a buyer names is the one that runs, and that a hardware attestation says so.",
+  "features": [
+    { "name": "months_of_history", "mean":    9.0, "scale":    8.0, "weight":  0.25, "note": "months of transaction history available" },
+    { "name": "inflows_per_month", "mean":   12.0, "scale":   10.0, "weight":   0.3, "note": "count of incoming payments per month" },
+    { "name": "inflow_regularity", "mean":    0.7, "scale":   0.25, "weight":   1.0, "note": "share of months with at least one inflow, 0 to 1" },
+    { "name": "avg_monthly_inflow_usd", "mean":  350.0, "scale":  300.0, "weight":   0.3, "note": "mean monthly inflow in USD" },
+    { "name": "balance_volatility", "mean":   0.45, "scale":   0.25, "weight":  -0.8, "note": "coefficient of variation of end of month balance, 0 to 1" },
+    { "name": "supplier_on_time_ratio", "mean":   0.75, "scale":    0.2, "weight":   1.2, "note": "share of supplier invoices paid on time, 0 to 1" },
+    { "name": "prior_loans_repaid", "mean":    0.5, "scale":    1.5, "weight":   0.5, "note": "count of prior loans fully repaid" },
+    { "name": "prior_loans_defaulted", "mean":    0.1, "scale":    0.6, "weight":  -1.6, "note": "count of prior loans defaulted" }
+  ],
+  "bias": 0.45,
+  "decision": {"approve_at": 0.6, "refer_at": 0.4}
+}

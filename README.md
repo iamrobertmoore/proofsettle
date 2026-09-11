@@ -7,7 +7,8 @@ Built for BUIDL CTC 2026 Fall, AI track. Solo entry.
 
 **Live page: [proofsettle.pages.dev](https://proofsettle.pages.dev)**. It reads Creditcoin in your
 browser and re-runs every check, including the hardware attestation, without asking you to trust
-anything written here.
+anything written here. **[Amara's desk](https://proofsettle.pages.dev/desk)** lets you buy a decision
+of your own with MetaMask on Sepolia. **[Demo video](https://www.youtube.com/watch?v=iRc2mHEIL4M)**, four and a half minutes.
 
 ---
 

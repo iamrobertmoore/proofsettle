@@ -98,8 +98,8 @@ be lifted out and reused:
   sealed or plain data inside a transaction that an Attestcoin proof will later cover, without
   changing the contract that receives it. Pinned against the compiled ABI decoder for both static
   and dynamic argument lists.
-- **`script/measure.ts`**, the complete-coverage scan of the verifier precompile's use on CC3, and
-  the correction it produced to Gluwa's own tutorial, filed upstream at
+- **`script/measure.ts`**, a complete-coverage scan of the verifier precompile's use on CC3 that
+  anyone building on the protocol can rerun, and the tutorial wording it corrected, sent upstream as
   [ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
 
 ## Contracts
@@ -267,31 +267,33 @@ The model is deliberately modest and says so in its own description. The point i
 It is that the exact model the buyer named is the one that ran, inside the exact build the buyer
 named, and that a hardware attestation and a public chain both say so.
 
-## How much of the Attestcoin oracle is real application use
+## Measuring the ground before building on it
 
-Before building on a protocol it is worth knowing who else is, so I measured it rather than
-guessing, twice: on 23 August, before most of the field had deployed, and again on 10 September,
-the day before this was submitted. Each scan is every event the verifier precompile emitted on
-CC3 testnet across 100,000 blocks, about 17.4 days, with complete coverage and no sampling.
+Before building on a protocol it is worth knowing how it is being used, so I measured it rather
+than guessing, and published the tool so anyone can. Two scans, each of every event the verifier
+precompile emitted on CC3 testnet across 100,000 blocks, about 17.4 days, with complete coverage
+and no sampling: one on 23 August, before most of the hackathon field had deployed, and one on 10
+September, the day before this was submitted.
 
 | | 23 August | 10 September |
 |---|---|---|
 | Transactions carrying a proof | 10,035 | **38,982** |
 | Contracts that called the verifier | 142 | **284** |
-| Share of traffic from just two of them | 93.79% | **92.17%** |
-| Contracts with exactly one sending address | 134 of 142 | **260 of 284** |
-| Most distinct senders on any one contract | 11 | **15**, still the Attestcoin tutorial's own minter |
+| Share of traffic from the two busiest | 93.79% | **92.17%** |
+| Contracts with a single sending address | 134 of 142 | **260 of 284** |
+| Most distinct senders on one contract | 11 | **15**, the Attestcoin tutorial's own minter |
 
-The hackathon's final fortnight doubled the number of contracts and quadrupled the transactions,
-and changed the shape of the traffic not at all: two single-sender contracts still account for
-nine calls in ten, and almost every other contract is exercised only by the address that
-deployed it. That is builders testing their own work rather than users using it, and it is the
-headroom this project was built for. The current figures are in `site/measurement.json`.
+The final fortnight of the hackathon doubled the number of contracts and quadrupled the
+transactions. The pattern is what a testnet in its testing phase looks like: two automated
+callers carry most of the volume, and most contracts are exercised by the address that deployed
+them. That is useful to know when designing for it, for example in choosing to build proofs
+locally with a hosted fallback rather than assuming the hosted service is always the fast path.
+The current figures are in `site/measurement.json`.
 
-Measuring it also turned up an error in Gluwa's own tutorial, which tells developers a faucet claim
-buys nine oracle queries. Priced from eight transactions through their minter, the real figure is
-closer to four hundred thousand. Reported upstream at
-[ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
+Measuring it also showed that the Hello Bridge tutorial's faucet note, which budgets a claim at nine
+oracle queries, predates the current fee schedule: priced from eight transactions through the
+tutorial's own minter, a claim covers closer to four hundred thousand. I sent the corrected wording
+upstream as [ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
 
 This says what was measured. It does not claim who operates any particular address. Reproduce it:
 

@@ -489,7 +489,7 @@
 <!-- 8 -->
 <section class="slide">
   <div class="eyebrow">Measured, not asserted</div>
-  <h2>How much of the Attestcoin oracle is real application use</h2>
+  <h2>Measuring the ground before building on it</h2>
   <div class="body">
     <div class="cols c4" style="gap:26px">
       <div class="stat"><span class="v">284</span><span class="k">contracts called the verifier in 17.4 days, to 10 September</span></div>
@@ -500,15 +500,15 @@
     <div class="cols c-7-5" style="margin-top:34px">
       <div>
         <p>
-          Before building on a protocol it is worth knowing who else is, so I measured it rather than
-          guessing, twice: every event the verifier precompile emitted on CC3 testnet across 100,000
-          blocks, complete coverage, no sampling, reproducible with <span class="mono">script/measure.ts</span>.
-          The final fortnight doubled the contracts and quadrupled the traffic; the shape did not move.
+          Before building on a protocol it is worth knowing how it is used, so I measured it rather
+          than guessing, twice: every event the verifier precompile emitted on CC3 testnet across
+          100,000 blocks, complete coverage, no sampling, reproducible by anyone with
+          <span class="mono">script/measure.ts</span>.
         </p>
         <p style="margin-top:14px">
-          Almost every contract there is exercised only by the address that deployed it. That is
-          builders testing their own work, not users using it. <b>Which is the headroom this was built
-          for, and I would rather say so than imply a crowd.</b>
+          The final fortnight doubled the contracts and quadrupled the traffic. The pattern is what a
+          testnet in its testing phase looks like, and it shaped this design: <b>build proofs locally,
+          with the hosted service as the fallback</b>, and read the chain rather than assume it.
         </p>
       </div>
       <div class="bars">
@@ -522,7 +522,7 @@
       </div>
     </div>
   </div>
-  <div class="foot"><span>The same measurement found an error in Gluwa's tutorial, reported upstream at ccnext-testnet-bridge-examples#30</span><span class="n">7</span></div>
+  <div class="foot"><span>The same scan corrected the tutorial's faucet note, sent upstream as ccnext-testnet-bridge-examples#30</span><span class="n">7</span></div>
 </section>
 
 

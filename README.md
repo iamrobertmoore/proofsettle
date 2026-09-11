@@ -1,3 +1,5 @@
+<p align="center"><img src="site/banner.png" alt="ProofSettle" width="600"></p>
+
 # ProofSettle
 
 **A settlement rail that pays for off-chain AI compute only when two independent proofs, of two

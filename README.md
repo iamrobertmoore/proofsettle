@@ -99,8 +99,8 @@ be lifted out and reused:
   changing the contract that receives it. Pinned against the compiled ABI decoder for both static
   and dynamic argument lists.
 - **`script/measure.ts`**, a complete-coverage scan of the verifier precompile's use on CC3 that
-  anyone building on the protocol can rerun, and the tutorial wording it corrected, sent upstream as
-  [ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
+  anyone building on the protocol can rerun, and the tutorial wording it corrected, sent upstream
+  on 26 August and kept on [my fork](https://github.com/iamrobertmoore/attestcoin-protocol-examples/blob/patch-1/hello-bridge/README.md) since the upstream repository went offline.
 
 ## Contracts
 
@@ -293,7 +293,9 @@ The current figures are in `site/measurement.json`.
 Measuring it also showed that the Hello Bridge tutorial's faucet note, which budgets a claim at nine
 oracle queries, predates the current fee schedule: priced from eight transactions through the
 tutorial's own minter, a claim covers closer to four hundred thousand. I sent the corrected wording
-upstream as [ccnext-testnet-bridge-examples#30](https://github.com/gluwa/ccnext-testnet-bridge-examples/pull/30).
+upstream on 26 August as pull request 30 against `gluwa/ccnext-testnet-bridge-examples`. That
+repository was taken offline on 11 September, so the change is linked from
+[my fork, branch `patch-1`](https://github.com/iamrobertmoore/attestcoin-protocol-examples/blob/patch-1/hello-bridge/README.md).
 
 This says what was measured. It does not claim who operates any particular address. Reproduce it:
 

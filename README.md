@@ -270,19 +270,23 @@ named, and that a hardware attestation and a public chain both say so.
 ## How much of the Attestcoin oracle is real application use
 
 Before building on a protocol it is worth knowing who else is, so I measured it rather than
-guessing. Every event the verifier precompile emitted on CC3 testnet across 100,000 blocks, about
-17.4 days, with complete coverage and no sampling:
+guessing, twice: on 23 August, before most of the field had deployed, and again on 10 September,
+the day before this was submitted. Each scan is every event the verifier precompile emitted on
+CC3 testnet across 100,000 blocks, about 17.4 days, with complete coverage and no sampling.
 
-| | |
-|---|---|
-| Contracts that called the verifier | **142** |
-| Share of traffic from just two of them | **93.79%** |
-| Contracts with exactly one sending address | **134 of 142** |
-| Most distinct senders on any one contract | **11**, on the Attestcoin tutorial's own minter |
+| | 23 August | 10 September |
+|---|---|---|
+| Transactions carrying a proof | 10,035 | **38,982** |
+| Contracts that called the verifier | 142 | **284** |
+| Share of traffic from just two of them | 93.79% | **92.17%** |
+| Contracts with exactly one sending address | 134 of 142 | **260 of 284** |
+| Most distinct senders on any one contract | 11 | **15**, still the Attestcoin tutorial's own minter |
 
-Almost every contract using the oracle is exercised only by the address that deployed it. That is
-builders testing their own work rather than users using it, and it is the headroom this project was
-built for.
+The hackathon's final fortnight doubled the number of contracts and quadrupled the transactions,
+and changed the shape of the traffic not at all: two single-sender contracts still account for
+nine calls in ten, and almost every other contract is exercised only by the address that
+deployed it. That is builders testing their own work rather than users using it, and it is the
+headroom this project was built for. The current figures are in `site/measurement.json`.
 
 Measuring it also turned up an error in Gluwa's own tutorial, which tells developers a faucet claim
 buys nine oracle queries. Priced from eight transactions through their minter, the real figure is

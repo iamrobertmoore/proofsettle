@@ -1,269 +1,274 @@
 {
-  "scannedAt": "2026-08-23T19:19:45.433Z",
-  "startBlock": 5261642,
-  "headBlock": 5361642,
+  "scannedAt": "2026-09-10T17:38:50.349Z",
+  "startBlock": 5364724,
+  "headBlock": 5464724,
   "windowBlocks": 100000,
   "approxDays": 17.4,
   "unscannedBlocks": 0,
-  "verifierEvents": 10217,
-  "uniqueTransactions": 10035,
-  "distinctContracts": 142,
-  "top2Calls": 9412,
-  "top2Pct": 93.79,
-  "tailContracts": 140,
-  "tailCalls": 623,
-  "singleSenderContracts": 134,
+  "verifierEvents": 101890,
+  "uniqueTransactions": 38982,
+  "distinctContracts": 284,
+  "top2Calls": 35929,
+  "top2Pct": 92.17,
+  "tailContracts": 282,
+  "tailCalls": 3053,
+  "singleSenderContracts": 260,
   "topContracts": [
     {
-      "contract": "0x6eeeA8340195B1eE41883AA2F489a9259ab238cF",
-      "calls": 4706,
-      "pct": 46.9,
+      "contract": "0xF7283aDefb2801db75160A49dA2F7E5e8fDc36c5",
+      "calls": 18681,
+      "pct": 47.92,
       "senders": 1,
-      "selectors": 1,
-      "firstBlock": 5327112,
-      "lastBlock": 5348995
+      "selectors": 2,
+      "firstBlock": 5369775,
+      "lastBlock": 5464723
     },
     {
-      "contract": "0xE64f8b159FC22F9B0B1ca4980362eB5765cAb0f3",
-      "calls": 4706,
-      "pct": 46.9,
+      "contract": "0x0c019ee3298111B3B067Ae1bA93F73d93EE5230E",
+      "calls": 17248,
+      "pct": 44.25,
       "senders": 1,
       "selectors": 1,
-      "firstBlock": 5354056,
-      "lastBlock": 5354390
+      "firstBlock": 5430492,
+      "lastBlock": 5464723
+    },
+    {
+      "contract": "0x2aF3203cCeAE275a990a540c49D282e41199121c",
+      "calls": 662,
+      "pct": 1.7,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5365273,
+      "lastBlock": 5461155
+    },
+    {
+      "contract": "0x91FAF68A9E5C0e013b5c01b7AACF4C841A6382f8",
+      "calls": 527,
+      "pct": 1.35,
+      "senders": 1,
+      "selectors": 2,
+      "firstBlock": 5377087,
+      "lastBlock": 5458188
+    },
+    {
+      "contract": "0x1fC6c2CFB9e339012B70D45977737B9e411efdc9",
+      "calls": 212,
+      "pct": 0.54,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5375869,
+      "lastBlock": 5464702
+    },
+    {
+      "contract": "0x8FA0BD5301D998Be873E31453E53d114929a5Fac",
+      "calls": 103,
+      "pct": 0.26,
+      "senders": 2,
+      "selectors": 2,
+      "firstBlock": 5375376,
+      "lastBlock": 5446409
     },
     {
       "contract": "0x0000000000000000000000000000000000000FD2",
-      "calls": 65,
-      "pct": 0.65,
-      "senders": 7,
+      "calls": 97,
+      "pct": 0.25,
+      "senders": 12,
       "selectors": 2,
-      "firstBlock": 5262248,
-      "lastBlock": 5357740
+      "firstBlock": 5365683,
+      "lastBlock": 5464472
     },
     {
-      "contract": "0xBff138558631157A927B5c137634eE356c24489d",
-      "calls": 51,
-      "pct": 0.51,
+      "contract": "0xFe0A4CBECa0d7acA0e81B694BcfcF6033356eB1A",
+      "calls": 61,
+      "pct": 0.16,
       "senders": 1,
       "selectors": 1,
-      "firstBlock": 5331401,
-      "lastBlock": 5349715
+      "firstBlock": 5442320,
+      "lastBlock": 5462833
     },
     {
-      "contract": "0x868041091DCda15934e16E79E30c2DcCBeEFFa60",
-      "calls": 33,
-      "pct": 0.33,
-      "senders": 1,
-      "selectors": 1,
-      "firstBlock": 5326328,
-      "lastBlock": 5326360
-    },
-    {
-      "contract": "0xB4fDb9f6e4dB548aC3b40DFCc7f72E4ef6b70d2B",
-      "calls": 29,
-      "pct": 0.29,
-      "senders": 1,
-      "selectors": 1,
-      "firstBlock": 5330430,
-      "lastBlock": 5330460
-    },
-    {
-      "contract": "0x4C4381dB68a1cAAE46a2E6CFc2f667ad22Dddf81",
-      "calls": 18,
-      "pct": 0.18,
+      "contract": "0x666AecD5f08406D8d0D3cF511399FdC7cCbc6d39",
+      "calls": 56,
+      "pct": 0.14,
       "senders": 1,
       "selectors": 2,
-      "firstBlock": 5307546,
-      "lastBlock": 5307631
+      "firstBlock": 5454984,
+      "lastBlock": 5464686
     },
     {
-      "contract": "0x071ff3210EA7619B7065ea24058030464093Dccd",
-      "calls": 18,
-      "pct": 0.18,
+      "contract": "0x47172643d148300d2649C475d68a5bD49267e60C",
+      "calls": 45,
+      "pct": 0.12,
       "senders": 1,
       "selectors": 1,
-      "firstBlock": 5343036,
-      "lastBlock": 5347333
+      "firstBlock": 5436728,
+      "lastBlock": 5463687
     },
     {
-      "contract": "0x14cFD68e1dE81B34BdE116DEB7b89C49d77822EF",
-      "calls": 17,
-      "pct": 0.17,
+      "contract": "0xDff00fde3829fFcA7A1dCAB0AA30602dd9F380A4",
+      "calls": 44,
+      "pct": 0.11,
+      "senders": 1,
+      "selectors": 1,
+      "firstBlock": 5439366,
+      "lastBlock": 5464623
+    },
+    {
+      "contract": "0xA7b5aCf4E4654596471b364C22E1bb31509B6896",
+      "calls": 43,
+      "pct": 0.11,
       "senders": 1,
       "selectors": 2,
-      "firstBlock": 5305557,
-      "lastBlock": 5305619
-    },
-    {
-      "contract": "0x581A7413e1fCcB767EC8BA9E837df43fbA06b3D2",
-      "calls": 17,
-      "pct": 0.17,
-      "senders": 1,
-      "selectors": 2,
-      "firstBlock": 5305647,
-      "lastBlock": 5305665
-    },
-    {
-      "contract": "0x00640B21EAd919959D65c109d01f634aBC79F132",
-      "calls": 15,
-      "pct": 0.15,
-      "senders": 1,
-      "selectors": 1,
-      "firstBlock": 5341179,
-      "lastBlock": 5341193
-    },
-    {
-      "contract": "0x2Be9B8640ED32815d3B9e8C92AbcD3F15F07396f",
-      "calls": 13,
-      "pct": 0.13,
-      "senders": 11,
-      "selectors": 1,
-      "firstBlock": 5265526,
-      "lastBlock": 5347912
+      "firstBlock": 5373225,
+      "lastBlock": 5375158
     }
   ],
   "mostDistinctSenders": [
     {
       "contract": "0x2Be9B8640ED32815d3B9e8C92AbcD3F15F07396f",
-      "calls": 13,
-      "pct": 0.13,
-      "senders": 11,
+      "calls": 15,
+      "pct": 0.04,
+      "senders": 15,
       "selectors": 1,
-      "firstBlock": 5265526,
-      "lastBlock": 5347912
+      "firstBlock": 5370072,
+      "lastBlock": 5457094
     },
     {
       "contract": "0x0000000000000000000000000000000000000FD2",
-      "calls": 65,
-      "pct": 0.65,
-      "senders": 7,
+      "calls": 97,
+      "pct": 0.25,
+      "senders": 12,
       "selectors": 2,
-      "firstBlock": 5262248,
-      "lastBlock": 5357740
+      "firstBlock": 5365683,
+      "lastBlock": 5464472
     },
     {
-      "contract": "0x9fa9Cd49d73449A5AC03E7d957048675C6AC04bE",
+      "contract": "0x26880c8980Cd54827543bD34c6c613253c69347b",
+      "calls": 10,
+      "pct": 0.03,
+      "senders": 4,
+      "selectors": 2,
+      "firstBlock": 5381447,
+      "lastBlock": 5387062
+    },
+    {
+      "contract": "0x769b5e6b038C69F139b00102E8361F722b22f9dA",
       "calls": 5,
-      "pct": 0.05,
-      "senders": 2,
-      "selectors": 1,
-      "firstBlock": 5344932,
-      "lastBlock": 5354342
-    },
-    {
-      "contract": "0x382b0Bb3CbC09B08Be8190bd746DA9A275Ab7B25",
-      "calls": 3,
-      "pct": 0.03,
-      "senders": 2,
+      "pct": 0.01,
+      "senders": 3,
       "selectors": 2,
-      "firstBlock": 5346306,
-      "lastBlock": 5346372
+      "firstBlock": 5372653,
+      "lastBlock": 5373587
     },
     {
-      "contract": "0xC86a454B32d44db77E09DAcAd99880Dc6b68687b",
-      "calls": 3,
-      "pct": 0.03,
-      "senders": 2,
+      "contract": "0x452301f32B2AF195cc7D1fA2986f03a254e26129",
+      "calls": 5,
+      "pct": 0.01,
+      "senders": 3,
       "selectors": 2,
-      "firstBlock": 5349234,
-      "lastBlock": 5349299
+      "firstBlock": 5380930,
+      "lastBlock": 5381207
     },
     {
-      "contract": "0xe3565A1A1B947f363ab433889522267cE3D4736F",
-      "calls": 2,
-      "pct": 0.02,
-      "senders": 2,
+      "contract": "0x5123CdFd395414FcB6c5b8bc10A0843882EfD277",
+      "calls": 3,
+      "pct": 0.01,
+      "senders": 3,
       "selectors": 1,
-      "firstBlock": 5302229,
-      "lastBlock": 5306285
+      "firstBlock": 5451140,
+      "lastBlock": 5451671
     }
   ],
   "daily": [
     {
       "daysAgo": 0,
-      "allTxs": 19,
-      "excludingTop2": 19
+      "allTxs": 4034,
+      "excludingTop2": 340
     },
     {
       "daysAgo": 1,
-      "allTxs": 4737,
-      "excludingTop2": 31
+      "allTxs": 3729,
+      "excludingTop2": 382
     },
     {
       "daysAgo": 2,
-      "allTxs": 4790,
-      "excludingTop2": 92
+      "allTxs": 4238,
+      "excludingTop2": 250
     },
     {
       "daysAgo": 3,
-      "allTxs": 67,
-      "excludingTop2": 67
+      "allTxs": 3971,
+      "excludingTop2": 214
     },
     {
       "daysAgo": 4,
-      "allTxs": 52,
-      "excludingTop2": 52
+      "allTxs": 3815,
+      "excludingTop2": 247
     },
     {
       "daysAgo": 5,
-      "allTxs": 60,
-      "excludingTop2": 60
+      "allTxs": 6225,
+      "excludingTop2": 205
     },
     {
       "daysAgo": 6,
-      "allTxs": 83,
-      "excludingTop2": 75
+      "allTxs": 1624,
+      "excludingTop2": 149
     },
     {
       "daysAgo": 7,
-      "allTxs": 43,
-      "excludingTop2": 43
+      "allTxs": 1498,
+      "excludingTop2": 96
     },
     {
       "daysAgo": 8,
-      "allTxs": 31,
-      "excludingTop2": 31
+      "allTxs": 1508,
+      "excludingTop2": 96
     },
     {
       "daysAgo": 9,
-      "allTxs": 95,
-      "excludingTop2": 95
+      "allTxs": 714,
+      "excludingTop2": 120
     },
     {
       "daysAgo": 10,
-      "allTxs": 23,
-      "excludingTop2": 23
+      "allTxs": 118,
+      "excludingTop2": 118
     },
     {
       "daysAgo": 11,
-      "allTxs": 7,
-      "excludingTop2": 7
+      "allTxs": 779,
+      "excludingTop2": 117
     },
     {
       "daysAgo": 12,
-      "allTxs": 4,
-      "excludingTop2": 4
+      "allTxs": 1385,
+      "excludingTop2": 46
     },
     {
       "daysAgo": 13,
-      "allTxs": 4,
-      "excludingTop2": 4
+      "allTxs": 1518,
+      "excludingTop2": 80
+    },
+    {
+      "daysAgo": 14,
+      "allTxs": 1681,
+      "excludingTop2": 220
     },
     {
       "daysAgo": 15,
-      "allTxs": 8,
-      "excludingTop2": 8
+      "allTxs": 1356,
+      "excludingTop2": 219
     },
     {
       "daysAgo": 16,
-      "allTxs": 10,
-      "excludingTop2": 10
+      "allTxs": 766,
+      "excludingTop2": 131
     },
     {
       "daysAgo": 17,
-      "allTxs": 2,
-      "excludingTop2": 2
+      "allTxs": 23,
+      "excludingTop2": 23
     }
   ]
 }

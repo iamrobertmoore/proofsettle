@@ -46,7 +46,8 @@ scenario() {
     fi
 
     printf '\n%s\n' "$name"
-    PATH="$stub:$PATH" PROJECT_ID=p MY_IP=203.0.113.7 \
+    : > "$state/env"
+    PATH="$stub:$PATH" PROJECT_ID=p MY_IP=203.0.113.7 ENV_FILE="$state/env" \
         CS_DISCOVERY_URL=http://127.0.0.1:8791/.well-known/openid-configuration \
         CS_EXPECTED_ISS=http://127.0.0.1:8791 \
         ZONES=z1 COMBOS=SEV:m1 FAMILIES=confidential-space \
@@ -69,6 +70,16 @@ scenario "nothing is running"                 ""    ""             ""       "$A"
 scenario "running this exact image"           "z1"  "127.0.0.1"    "$A"     "$A"   0    0
 scenario "running a different image"          "z1"  "127.0.0.1"    "$B"     "$A"   1    1
 scenario "exists but does not answer"         "z1"  "10.255.255.1" ""       "$A"   1    1
+
+# The real .env must come through untouched. This is the regression that put a fake enclave's
+# address into a developer's live configuration.
+if [ -f "$repo/.env" ]; then
+    if grep -q '^ENCLAVE_URL=http://127.0.0.1:8080' "$repo/.env"; then
+        printf '  FAIL  the real .env now points at the fake enclave\n'; fail=$((fail + 1))
+    else
+        printf '  ok    the real .env was not touched\n'; pass=$((pass + 1))
+    fi
+fi
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

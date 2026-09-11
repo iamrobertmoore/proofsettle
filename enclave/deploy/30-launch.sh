@@ -67,8 +67,11 @@ FAMILIES="${FAMILIES:-confidential-space confidential-space-debug}"
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 die() { printf '\n\033[31mFAILED: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# ENV_FILE lets the launch-decision test point this at a scratch file. Without it the test wrote
+# the fake enclave's 127.0.0.1 address into the real .env, and the next worker run on the
+# developer's machine quietly targeted an enclave that was not there.
 write_env() {
-    local url="$1" env_file="$here/.env" tmp replaced=0 line
+    local url="$1" env_file="${ENV_FILE:-$here/.env}" tmp replaced=0 line
     if [ ! -f "$env_file" ]; then
         echo "  no .env at $env_file, so set this yourself: ENCLAVE_URL=$url"
         return 0

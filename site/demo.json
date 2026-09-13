@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "label": "Public synthetic example; this disposable answer key is intentionally published.",
+  "mode": "accepted",
+  "sourceTx": "0x268bd557f6674c252a61d0f04360e864ff664750bb7f3025ef95cc596231f964",
+  "jobId": "0xdb0aa8731c5f18eceecd1f316b6d76231ce244441e08dd1a407bd75f1343db04",
+  "sourceBlock": 11696647,
+  "record": {
+    "months_of_history": 6,
+    "inflows_per_month": 14,
+    "inflow_regularity": 0.75,
+    "avg_monthly_inflow_usd": 300,
+    "balance_volatility": 0.4,
+    "supplier_on_time_ratio": 0.8,
+    "prior_loans_repaid": 0,
+    "prior_loans_defaulted": 0,
+    "_nonce": "0x84f6f6376d3cd761f62c60aa209d3bf84053d27798509f9f11918e44a736b224"
+  },
+  "returnKey": {
+    "k": "0x302e020100300506032b656e042204204846a2c22fc94e0e1800f52dfad94446abc8c0a79ccd3379fd866cf2973a8d75",
+    "raw": "0xb20ed745ef3690fe91c0dbe0762cfb2e6a54077e8503a933aca387ead5777b66"
+  },
+  "requiredMeasurement": "0x7053ba1c36f694fbeb0aa7ecd92c680b1274d18cf05c57380391e2e2bdf82678",
+  "modelHash": "0x9d119d29c500f3fea93c21c22cc5930227e32f6542aaa29eca22b211fdfc206d",
+  "inputHash": "0x1df190c413e90c32f1a9445777972a198b8ce66111cd0c7fdaa153d548d40ec8",
+  "settlementTx": "0x7a0682124d901571bab78ebf0de8e76736cf9e89ab15be436eec9c6919211afa",
+  "finalizeTx": "0x2ac3d1c365d913d8e3bc285201eaf1ccafcd3eb1458d3ca03aa9341dbbf7639e",
+  "payoutTx": "0x8d1610259edfb84015e5130a6a4f4634aabee8514922f27a2a347101954df072",
+  "refusal": {
+    "tx": "0x9e4cd30ef97ac952f999098d39bc6c54f89dc1fa3c3bd5596a11e60caee38777",
+    "jobId": "0xad0ea3f1197cabf212bc9dca3b7dd37271dc62c43b339b94b8d6b26f8d730b5e",
+    "sourceTx": "0xb72728c3de653a7e42b6d86d70a3682c44b56f6e5afa28d91d9d2699a485fa0e"
+  },
+  "rejected": {
+    "jobId": "0x3f43e0fc50f779797f83d55001d2fa96b016a55612199a4f9b7d73c2b759d826",
+    "sourceTx": "0x6479340bc7680190020d0de70bb6d9ae9c35745974b0b637aa56c9bcfe6dcb39",
+    "settlementTx": "0xb67594e9b34ac26fe40cbadd6d6a3389823f3c852b10b8dc59960f087cfc765e",
+    "finalizeTx": "0xb80c5ce83a9ef0b4234ad7af2a4ea8e033c761d829f3f7a0d664d6ddc4aeb066",
+    "payoutTx": "0x0a7aa987c83eda0252cb9c0d11411eb64f1b6731d4998ded49e7db2268bfd64d"
+  }
+}

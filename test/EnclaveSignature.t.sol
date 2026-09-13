@@ -70,12 +70,18 @@ contract EnclaveSignatureTest is Test {
         s = fixture.readBytes32(string.concat(base, ".s"));
     }
 
+    function _digest(uint256 i, bytes32 jobId, bytes32 resultHash, ComputeSettlement.Outcome outcome, uint16 bps) internal view returns (bytes32) {
+        string memory base = string.concat(".jobs[", vm.toString(i), "]");
+        return settlement.resultDigest(jobId, resultHash, outcome, bps,
+            fixture.readBytes32(string.concat(base, ".requestHash")), fixture.readBytes32(string.concat(base, ".deliveryHash")));
+    }
+
     /// @notice Every signature the real enclave produced must recover to the enclave's own address.
     function test_enclave_signatures_recover_to_the_enclave() public view {
         for (uint256 i = 0; i < 3; i++) {
             (bytes32 jobId, bytes32 resultHash, uint8 outcome, uint16 bps, uint8 v, bytes32 r, bytes32 s) = _job(i);
 
-            bytes32 digest = settlement.resultDigest(jobId, resultHash, ComputeSettlement.Outcome(outcome), bps);
+            bytes32 digest = _digest(i, jobId, resultHash, ComputeSettlement.Outcome(outcome), bps);
             address recovered = ecrecover(digest, v, r, s);
 
             assertEq(recovered, enclaveSigner, "enclave digest disagrees with the contract digest");
@@ -87,7 +93,7 @@ contract EnclaveSignatureTest is Test {
         for (uint256 i = 0; i < 3; i++) {
             (bytes32 jobId, bytes32 resultHash, uint8 outcome, uint16 bps, uint8 v, bytes32 r, bytes32 s) = _job(i);
             address recovered =
-                ecrecover(settlement.resultDigest(jobId, resultHash, ComputeSettlement.Outcome(outcome), bps), v, r, s);
+                ecrecover(_digest(i, jobId, resultHash, ComputeSettlement.Outcome(outcome), bps), v, r, s);
             assertTrue(registry.isActiveSigner(MEASUREMENT, recovered), "registry rejected a real enclave signature");
         }
     }
@@ -111,12 +117,12 @@ contract EnclaveSignatureTest is Test {
         (bytes32 jobId, bytes32 resultHash, uint8 outcome, uint16 bps, uint8 v, bytes32 r, bytes32 s) = _job(0);
 
         address honest =
-            ecrecover(settlement.resultDigest(jobId, resultHash, ComputeSettlement.Outcome(outcome), bps), v, r, s);
+            ecrecover(_digest(0, jobId, resultHash, ComputeSettlement.Outcome(outcome), bps), v, r, s);
         assertEq(honest, enclaveSigner);
 
         uint8 tampered = outcome == 1 ? 0 : 1;
         address forged =
-            ecrecover(settlement.resultDigest(jobId, resultHash, ComputeSettlement.Outcome(tampered), bps), v, r, s);
+            ecrecover(_digest(0, jobId, resultHash, ComputeSettlement.Outcome(tampered), bps), v, r, s);
 
         assertTrue(forged != enclaveSigner, "the verdict is not actually bound into the signature");
         assertFalse(registry.isActiveSigner(MEASUREMENT, forged), "a tampered verdict still passed the registry");

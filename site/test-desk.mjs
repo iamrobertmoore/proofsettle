@@ -15,7 +15,7 @@
  *
  *   node site/test-desk.mjs
  */
-import pw from '/opt/node22/lib/node_modules/playwright/index.js';
+import pw from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -27,7 +27,7 @@ import { loadModel, score, canonical, hashOf } from '../enclave/model.mjs';
 import { keccak256, toHex } from '../enclave/crypto.mjs';
 
 const { chromium } = pw;
-const EXECUTABLE = process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXECUTABLE = process.env.PW_CHROMIUM ?? chromium.executablePath();
 const ROOT = new URL('.', import.meta.url).pathname;
 const PORT = 8137 + Math.floor(Math.random() * 500);
 const ENCLAVE_PORT = 18500 + Math.floor(Math.random() * 500);
@@ -94,8 +94,9 @@ async function mockRpc(path, body) {
       const h = params[0].toLowerCase();
       await gateFor(h).p;
       const job = chain.jobs.get(h); if (!job) return null;
-      return { status: '0x1', blockNumber: '0x' + job.block.toString(16), transactionHash: h, logs: [{ topics: [TOPIC_CREATED, job.jobId, w(job.payer), w(PROVIDER)], data: '0x' }] };
+      return { status: '0x1', blockNumber: '0x' + job.block.toString(16), transactionHash: h, logs: [{ address: deployments.sourceEscrow, topics: [TOPIC_CREATED, job.jobId, w(job.payer), w(PROVIDER)], data: '0x' }] };
     }
+    if (method === 'eth_call') return '0x'+w('1');
     return null;
   }
   // Creditcoin
@@ -251,6 +252,8 @@ check(shown === toHex(keccak256(Buffer.from(JSON.stringify(record)))), 'the inpu
 
 const expected = score(model, record);
 check(await page.$eval('#pay', (e) => e.hidden), 'pay button hidden until a wallet connects');
+// Token failure must block purchases. Other suites exercise signed enrollment evidence.
+await page.evaluate(() => { window.__desk.state.providerVerified = true; });
 await page.click('#connect');
 await waitText('#pay-checks li', /Connected/);
 check(await page.$eval('#pay', (e) => !e.hidden && !e.disabled), 'pay button enabled after connecting on Sepolia');
@@ -300,6 +303,8 @@ console.log('\n--- scenario 3: the buyer names the revoked build ---');
 await page.goto(PAGE, { waitUntil: 'networkidle' });
 await page.waitForSelector('#build-choice input');
 await page.check(`input[name=build][value="${PREVIOUS}"]`);
+// Token failure must block purchases. Other suites exercise signed enrollment evidence.
+await page.evaluate(() => { window.__desk.state.providerVerified = true; });
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.click('#pay'); await waitText('#pay-checks li', /Payment sent/);
 await waitText('#settle-checks li', /Waiting for Sepolia/);
@@ -316,6 +321,8 @@ console.log('\n--- scenario 4: the enclave refuses the job and signs the refusal
 await page.goto(PAGE, { waitUntil: 'networkidle' });
 await page.waitForSelector('#build-choice input');
 await page.click('.preset[data-i="2"]');
+// Token failure must block purchases. Other suites exercise signed enrollment evidence.
+await page.evaluate(() => { window.__desk.state.providerVerified = true; });
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.click('#pay'); await waitText('#pay-checks li', /Payment sent/);
 await waitText('#settle-checks li', /Waiting for Sepolia/);
@@ -339,8 +346,8 @@ check(/^0x[0-9a-f]{64}$/.test(seed.measurement) && /^0x[0-9a-fA-F]{40}$/.test(se
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.waitForTimeout(300);
 const payChecks = await texts('#pay-checks li');
-check(await page.$eval('#pay', (e) => e.disabled), 'a build with no encryption key cannot be paid for from the desk');
-check(payChecks.some((t) => /no encryption key/.test(t)), 'and the page says why', payChecks.at(-1)?.slice(0, 80));
+check(await page.$eval('#pay', (e) => e.disabled), 'failed provider verification blocks payment even with a connected wallet');
+check((await texts('#provider-checks li')).some(t=>t.startsWith('✗')), 'the failed identity check remains visible');
 serveSeed = false;
 
 // Layout sanity, once.

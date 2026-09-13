@@ -14,8 +14,9 @@ FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# No package.json and no install step. The enclave has zero runtime dependencies on purpose: a
-# supply chain is a poor thing to put inside a trust boundary.
+# Pinned standard cryptography. Dependencies are part of the measured container image.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
 COPY crypto.mjs envelope.mjs model.mjs model.json server.mjs ./
 
 ENV PORT=8080

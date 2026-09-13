@@ -92,12 +92,16 @@ contract ComputeSettlementTest is Test {
         return EncodedTx.buildWithOneLog(receiptStatus, log);
     }
 
+    function requestHash() internal pure returns (bytes32) {
+        return keccak256(abi.encode(keccak256("model"), keccak256("input"), keccak256("")));
+    }
+
     function _sign(uint256 key, bytes32 jobId, bytes32 resultHash, ComputeSettlement.Outcome outcome, uint16 bps)
         internal
         view
         returns (uint8 v, bytes32 r, bytes32 s)
     {
-        return vm.sign(key, settlement.resultDigest(jobId, resultHash, outcome, bps));
+        return vm.sign(key, settlement.resultDigest(jobId, resultHash, outcome, bps, requestHash(), keccak256("")));
     }
 
     /// @dev Signature and proof are prepared as a separate step on purpose.
@@ -138,7 +142,7 @@ contract ComputeSettlementTest is Test {
 
     function _att(Prepared memory p) internal pure returns (ComputeSettlement.EnclaveAttestation memory) {
         return ComputeSettlement.EnclaveAttestation({
-            resultHash: RESULT_HASH, outcome: p.outcome, scoreBps: p.bps, v: p.v, r: p.r, s: p.s
+            resultHash: RESULT_HASH, requestHash: requestHash(), deliveryHash: keccak256(""), outcome: p.outcome, scoreBps: p.bps, v: p.v, r: p.r, s: p.s
         });
     }
 
@@ -177,8 +181,11 @@ contract ComputeSettlementTest is Test {
         Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
         bytes memory rider = hex"01";
         for (uint256 i = 0; i < 200; i++) rider = abi.encodePacked(rider, bytes1(uint8(i)));
+        ComputeSettlement.EnclaveAttestation memory att = _att(p);
+        att.deliveryHash = keccak256(rider);
+        (att.v, att.r, att.s) = vm.sign(enclaveKey, settlement.resultDigest(JOB_ID, RESULT_HASH, att.outcome, att.scoreBps, att.requestHash, att.deliveryHash));
         bytes memory data = abi.encodePacked(
-            abi.encodeCall(settlement.settle, (SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, _att(p))),
+            abi.encodeCall(settlement.settle, (SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, att)),
             rider,
             uint32(rider.length),
             bytes4("PSE1")
@@ -419,7 +426,7 @@ contract ComputeSettlementTest is Test {
     function test_event_signature_constant_matches_the_deployed_escrow() public view {
         assertEq(
             settlement.JOB_CREATED_SIG(),
-            keccak256("JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32)"),
+            keccak256("JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32,bytes32,uint64)"),
             "JOB_CREATED_SIG drifted from the escrow event"
         );
     }
@@ -433,5 +440,55 @@ contract ComputeSettlementTest is Test {
     function test_minter_can_only_be_set_once() public {
         vm.expectRevert(ComputeCredit.MinterAlreadySet.selector);
         credit.setMinter(address(0xdead));
+    }
+
+    function _substitution(bytes32 model, bytes32 input, bytes32 envelope) internal {
+        Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        ComputeSettlement.EnclaveAttestation memory att = _att(p);
+        att.requestHash = keccak256(abi.encode(model, input, envelope));
+        (att.v, att.r, att.s) = vm.sign(enclaveKey, settlement.resultDigest(JOB_ID, RESULT_HASH, att.outcome, att.scoreBps, att.requestHash, att.deliveryHash));
+        vm.expectRevert(abi.encodeWithSelector(ComputeSettlement.RequestMismatch.selector, requestHash(), att.requestHash));
+        settlement.settle(SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, att);
+        assertEq(credit.balanceOf(provider), 0);
+        assertEq(verifier.verifyCalls(), 0, "a refused pair must roll back proof consumption too");
+    }
+
+    function test_rejects_real_signer_for_substituted_input() public {
+        _substitution(keccak256("model"), keccak256("attacker-input"), keccak256(""));
+    }
+    function test_rejects_real_signer_for_substituted_model() public {
+        _substitution(keccak256("attacker-model"), keccak256("input"), keccak256(""));
+    }
+    function test_rejects_return_key_or_envelope_substitution() public {
+        _substitution(keccak256("model"), keccak256("input"), keccak256("same plaintext sealed to an attacker return key"));
+    }
+    function test_rejects_a_missing_signed_delivery() public {
+        Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        ComputeSettlement.EnclaveAttestation memory att = _att(p);
+        att.deliveryHash = keccak256("the signed encrypted answer");
+        (att.v, att.r, att.s) = vm.sign(enclaveKey, settlement.resultDigest(JOB_ID, RESULT_HASH, att.outcome, att.scoreBps, att.requestHash, att.deliveryHash));
+        vm.expectRevert(abi.encodeWithSelector(ComputeSettlement.DeliveryMismatch.selector, att.deliveryHash, keccak256("")));
+        settlement.settle(SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, att);
+    }
+    function test_rejects_a_replaced_delivery() public {
+        Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        bytes memory wrong = hex"010203";
+        bytes memory data = abi.encodePacked(abi.encodeCall(settlement.settle, (SEPOLIA_CHAIN_KEY, 11_535_171, p.encodedTx, p.mp, p.cp, _att(p))), wrong, uint32(wrong.length), bytes4("PSE1"));
+        vm.expectRevert(abi.encodeWithSelector(ComputeSettlement.DeliveryMismatch.selector, keccak256(""), keccak256(wrong)));
+        (bool ok,) = address(settlement).call(data);
+        assertTrue(ok, "expectRevert consumes the failure");
+    }
+    function test_rejects_settlement_at_the_source_deadline() public {
+        Prepared memory p = _prepare(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        uint64 deadline = uint64(block.timestamp + 1 days);
+        vm.warp(deadline);
+        vm.expectRevert(abi.encodeWithSelector(ComputeSettlement.SettlementExpired.selector, deadline));
+        _call(p);
+    }
+    function test_receipts_cannot_be_sold_as_redeemable_money() public {
+        _settle(_jobTx(sourceEscrow, MEASUREMENT, 1), enclaveKey);
+        vm.prank(provider);
+        vm.expectRevert(bytes4(keccak256("NonTransferableReceipt()")));
+        credit.transfer(payer, AMOUNT);
     }
 }

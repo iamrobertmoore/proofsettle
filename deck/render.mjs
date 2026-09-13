@@ -3,7 +3,7 @@
  *
  *   node deck/render.mjs
  */
-import pw from '/opt/node22/lib/node_modules/playwright/index.js';
+import pw from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 const { chromium } = pw;
 
@@ -21,7 +21,7 @@ const left = html.match(/__[A-Z_]+__/g);
 if (left) { console.error('UNSUBSTITUTED TOKENS:', [...new Set(left)].join(', ')); process.exit(1); }
 writeFileSync(new URL('./deck.rendered.html', import.meta.url), html);
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: process.env.PW_CHROMIUM ?? chromium.executablePath() });
 const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
 await p.setContent(html, { waitUntil: 'load' });
 await p.emulateMedia({ media: 'screen' });

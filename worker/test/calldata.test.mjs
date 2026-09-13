@@ -42,7 +42,7 @@ test('settle calldata: the sealed result appended after dynamic arguments still 
     1, 123456, '0x' + 'aa'.repeat(300),
     { root: '0x' + '55'.repeat(32), siblings: [{ hash: '0x' + '66'.repeat(32), isLeft: true }, { hash: '0x' + '77'.repeat(32), isLeft: false }] },
     { lowerEndpointDigest: '0x' + '88'.repeat(32), roots: ['0x' + '99'.repeat(32), '0x' + '00'.repeat(32)] },
-    { resultHash: '0x' + 'bb'.repeat(32), outcome: 1, scoreBps: 10000, v: 27, r: '0x' + 'cc'.repeat(32), s: '0x' + 'dd'.repeat(32) },
+    { requestHash: '0x' + '11'.repeat(32), deliveryHash: '0x' + '22'.repeat(32), resultHash: '0x' + 'bb'.repeat(32), outcome: 1, scoreBps: 10000, v: 27, r: '0x' + 'cc'.repeat(32), s: '0x' + 'dd'.repeat(32) },
   ];
   const clean = iface.encodeFunctionData('settle', args);
   const withResult = clean + withTrailer(envelope).toString('hex');

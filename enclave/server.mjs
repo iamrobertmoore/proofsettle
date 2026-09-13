@@ -25,7 +25,7 @@ import { createServer, request as httpRequest } from 'node:http';
 import { generateKeyPairSync } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { keccak256, signDigest, addressFor, encodeDigest, toHex } from './crypto.mjs';
+import { keccak256, signDigest, addressFor, encodeDigest, toHex, requestCommitment } from './crypto.mjs';
 import { generateRecipientKey, seal, open } from './envelope.mjs';
 import { loadModel, score, canonical, hashOf } from './model.mjs';
 
@@ -39,7 +39,7 @@ const PORT = Number(process.env.PORT ?? 8080);
  * digest so the two can be compared. It is not a security boundary: anything can claim a version,
  * only the attestation token proves one.
  */
-const BUILD = 'proofsettle-enclave/1.2.0';
+const BUILD = 'proofsettle-enclave/2.0.0';
 
 /**
  * Confidential Space exposes the attestation token two ways. A default token is written to a file.
@@ -217,14 +217,18 @@ const server = createServer(async (req, res) => {
       }
 
       const { outcome, scoreBps, result, resultHash, resultCiphertext } = runJob(job);
-      const digest = encodeDigest(job.chainId, job.settlementAddress, job.jobId, resultHash, outcome, scoreBps);
+      const requestHash = requestCommitment(job.modelHash, job.inputHash, job.ciphertext);
+      const delivery = resultCiphertext ? Buffer.from(resultCiphertext.slice(2), 'hex')
+        : Buffer.concat([Buffer.from([2]), Buffer.from(canonical(result))]);
+      const deliveryHash = toHex(keccak256(delivery));
+      const digest = encodeDigest(job.chainId, job.settlementAddress, job.jobId, resultHash, outcome, scoreBps, requestHash, deliveryHash);
       const sig = signDigest(PRIV_HEX, digest);
 
       // The plaintext result is returned only for a rejection, where there is no key to seal it to
       // and the reason is what the buyer needs. An accepted result is returned sealed, and the
       // worker cannot read it.
       return json(res, 200, {
-        resultHash, outcome, scoreBps, ...sig, signer: SIGNER,
+        resultHash, requestHash, deliveryHash, outcome, scoreBps, ...sig, signer: SIGNER,
         resultCiphertext,
         rejection: outcome === OUTCOME.Rejected ? result : undefined,
       });

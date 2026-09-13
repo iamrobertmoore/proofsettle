@@ -20,7 +20,7 @@ contract ComputeJobEscrowTest is Test {
         uint256 amount,
         bytes32 requiredMeasurement,
         bytes32 modelHash,
-        bytes32 inputHash
+        bytes32 inputHash, bytes32 envelopeHash, uint64 settleBy
     );
 
     function setUp() public {
@@ -46,7 +46,7 @@ contract ComputeJobEscrowTest is Test {
 
     function test_emits_the_event_the_settlement_contract_reads() public {
         vm.expectEmit(false, true, true, true, address(escrow));
-        emit JobCreated(bytes32(0), payer, provider, 1 ether, MEASUREMENT, keccak256("model"), keccak256("input"));
+        emit JobCreated(bytes32(0), payer, provider, 1 ether, MEASUREMENT, keccak256("model"), keccak256("input"), keccak256(""), uint64(block.timestamp + 1 days));
         _create(1 ether);
     }
 
@@ -77,7 +77,7 @@ contract ComputeJobEscrowTest is Test {
             bytes4("PSE1")
         );
         vm.expectEmit(false, true, true, true, address(escrow));
-        emit JobCreated(bytes32(0), payer, provider, 1 ether, MEASUREMENT, keccak256("model"), keccak256("input"));
+        emit JobCreated(bytes32(0), payer, provider, 1 ether, MEASUREMENT, keccak256("model"), keccak256("input"), keccak256(envelope), uint64(block.timestamp + 1 days));
         vm.prank(payer);
         (bool ok, bytes memory ret) = address(escrow).call{value: 1 ether}(data);
         assertTrue(ok, "the decoder rejected trailing calldata");
@@ -135,6 +135,61 @@ contract ComputeJobEscrowTest is Test {
         vm.prank(provider);
         vm.expectRevert(ComputeJobEscrow.NotPayer.selector);
         escrow.refund(jobId);
+    }
+
+    function test_only_the_fixed_relayer_can_finalize() public {
+        bytes32 id = _create(1 ether);
+        vm.prank(provider);
+        vm.expectRevert(ComputeJobEscrow.NotSettlementRelayer.selector);
+        escrow.finalize(id, 1 ether, 0);
+    }
+    function test_return_split_must_equal_the_locked_payment() public {
+        bytes32 id = _create(1 ether);
+        vm.expectRevert(ComputeJobEscrow.InvalidSplit.selector);
+        escrow.finalize(id, 1 ether, 1);
+    }
+    function test_accepted_payment_reaches_provider_exactly_once() public {
+        bytes32 id = _create(1 ether);
+        escrow.finalize(id, 1 ether, 0);
+        uint256 before = provider.balance;
+        vm.prank(makeAddr("anyone"));
+        escrow.withdrawFor(provider);
+        assertEq(provider.balance - before, 1 ether);
+        vm.expectRevert(ComputeJobEscrow.AlreadyFinalized.selector);
+        escrow.finalize(id, 1 ether, 0);
+        vm.expectRevert(ComputeJobEscrow.NothingToWithdraw.selector);
+        escrow.withdrawFor(provider);
+    }
+    function test_rejected_payment_reaches_buyer() public {
+        bytes32 id = _create(1 ether);
+        escrow.finalize(id, 0, 1 ether);
+        uint256 before = payer.balance;
+        escrow.withdrawFor(payer);
+        assertEq(payer.balance - before, 1 ether);
+    }
+    function test_partial_payment_conserves_eth() public {
+        bytes32 id = _create(1 ether);
+        escrow.finalize(id, 0.7 ether, 0.3 ether);
+        uint256 p = provider.balance; uint256 b = payer.balance;
+        escrow.withdrawFor(provider); escrow.withdrawFor(payer);
+        assertEq(provider.balance - p, 0.7 ether);
+        assertEq(payer.balance - b, 0.3 ether);
+        assertEq(address(escrow).balance, 0);
+    }
+    function test_finalized_job_cannot_take_timeout_refund() public {
+        bytes32 id = _create(1 ether);
+        escrow.finalize(id, 1 ether, 0);
+        vm.warp(block.timestamp + 31 days);
+        vm.prank(payer);
+        vm.expectRevert(ComputeJobEscrow.AlreadyFinalized.selector);
+        escrow.refund(id);
+    }
+    function test_timeout_refunded_job_cannot_be_released_again() public {
+        bytes32 id = _create(1 ether);
+        vm.warp(block.timestamp + 31 days);
+        vm.prank(payer); escrow.refund(id);
+        vm.expectRevert(ComputeJobEscrow.AlreadyRefunded.selector);
+        escrow.finalize(id, 1 ether, 0);
     }
 }
 

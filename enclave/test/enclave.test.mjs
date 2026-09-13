@@ -46,7 +46,7 @@ function sealed(identity, record = APPLICANT) {
 }
 
 function recovers(res, identity) {
-  const digest = encodeDigest(CHAIN, SETTLEMENT, JOB, res.resultHash, res.outcome, res.scoreBps);
+  const digest = encodeDigest(CHAIN, SETTLEMENT, JOB, res.resultHash, res.outcome, res.scoreBps, res.requestHash, res.deliveryHash);
   return ethers.recoverAddress(digest, { r: res.r, s: res.s, v: res.v }).toLowerCase() === identity.signer.toLowerCase();
 }
 
@@ -134,4 +134,18 @@ test('the same input always produces the same result hash', async () => {
   const ra = await post('/run', { jobId: JOB, modelHash: id.modelHash, inputHash: a.inputHash, settlementAddress: SETTLEMENT, chainId: CHAIN, ciphertext: a.ciphertext });
   const rb = await post('/run', { jobId: JOB, modelHash: id.modelHash, inputHash: b.inputHash, settlementAddress: SETTLEMENT, chainId: CHAIN, ciphertext: b.ciphertext });
   assert.equal(ra.resultHash, rb.resultHash, 'result must not depend on the envelope, only on the input');
+});
+
+test('signature commits to source request and exact encrypted delivery, including return key', async () => {
+  const id = await get('/identity');
+  const a = sealed(id), b = sealed(id);
+  const run = x => post('/run', { jobId: JOB, modelHash: id.modelHash, inputHash: x.inputHash, settlementAddress: SETTLEMENT, chainId: CHAIN, ciphertext: x.ciphertext });
+  const ra = await run(a), rb = await run(b);
+  const expected = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['bytes32','bytes32','bytes32'], [id.modelHash,a.inputHash,ethers.keccak256(a.ciphertext)]));
+  assert.equal(ra.requestHash, expected);
+  assert.notEqual(ra.requestHash, rb.requestHash, 'different return keys must bind different requests');
+  assert.equal(ra.deliveryHash, ethers.keccak256(ra.resultCiphertext));
+  assert.ok(recovers(ra,id));
+  assert.equal(recovers({...ra, deliveryHash:rb.deliveryHash},id),false);
+  assert.equal(recovers({...ra, requestHash:rb.requestHash},id),false);
 });

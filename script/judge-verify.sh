@@ -100,6 +100,8 @@ readback() {
 }
 stage "live readbacks from Creditcoin CC3 testnet" readback
 
+stage "live v2 request, sealed delivery, original payout and refusal" node script/verify-live.mjs
+
 # ---------------------------------------------------------------- summary
 printf '\n\033[1m== summary\033[0m\n'
 for s in "${passed[@]:-}";  do [ -n "$s" ] && printf '\033[32m   PASS  %s\033[0m\n' "$s"; done

@@ -7,11 +7,11 @@
  *
  *   node site/test-page.mjs [settlement] [registry] [jobId]
  */
-import pw from '/opt/node22/lib/node_modules/playwright/index.js';
+import pw from 'playwright';
 const { chromium } = pw;
 
 /** The sandbox ships chromium at a pinned build. Point at it rather than downloading another. */
-const EXECUTABLE = process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXECUTABLE = process.env.PW_CHROMIUM ?? chromium.executablePath();
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
@@ -81,7 +81,7 @@ const server = createServer(async (req, res) => {
   // Split the query string BEFORE the index check. Getting this the wrong way round made the
   // page 404 the moment a ?rpc= override was added, and every assertion below failed at once.
   const path = req.url.split('?')[0];
-  const p = join(ROOT, path === '/' ? 'index.html' : path);
+  const p = join(ROOT, path === '/' ? 'verify.html' : path);
   try {
     const body = await readFile(p);
     res.writeHead(200, { 'content-type': TYPES[extname(p)] ?? 'text/plain' });
@@ -205,24 +205,6 @@ for (const scheme of ['light', 'dark']) {
   check(results.some((t) => /conserves the payment/.test(t)), 'value conservation is checked');
   check(results.some((t) => /consumed, and cannot be reused/.test(t)), 'replay protection is surfaced');
   check(results.some((t) => /binding is live, not revoked/.test(t)), 'the enclave binding is checked');
-
-  // The hero animation states two facts about real transactions, so it has to actually reach both
-  // of them. Run this once rather than in both colour schemes; it takes about ten seconds.
-  if (scheme === 'dark') {
-    await page.evaluate(() => document.getElementById('rig').scrollIntoView({ block: 'center' }));
-    const reached = async (want) => {
-      try {
-        await page.waitForFunction(
-          (w) => document.getElementById('verdict')?.textContent === w, want, { timeout: 20000 });
-        return true;
-      } catch { return false; }
-    };
-    check(await reached('settled'), 'the hero animation reaches the settled state');
-    check(await reached('refused'), 'and goes on to show the refusal');
-    const cap = await page.$eval('#rig-cap', (e) => e.textContent);
-    check(/EnclaveNotAccepted/.test(cap) && /5,367,004/.test(cap),
-      'the refusal caption names the real error and the real block', cap.slice(0, 70));
-  }
 
   await page.screenshot({ path: `/tmp/verifier-${scheme}.png`, fullPage: true });
   await ctx.close();

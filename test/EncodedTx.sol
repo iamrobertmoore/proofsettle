@@ -64,7 +64,7 @@ library EncodedTx {
         bytes32 requiredMeasurement,
         bytes32 modelHash,
         bytes32 inputHash
-    ) internal pure returns (Log memory log) {
+    ) internal view returns (Log memory log) {
         bytes32[] memory topics = new bytes32[](4);
         topics[0] = eventSig;
         topics[1] = jobId;
@@ -73,6 +73,6 @@ library EncodedTx {
 
         log.emitter = emitter;
         log.topics = topics;
-        log.data = abi.encode(amount, requiredMeasurement, modelHash, inputHash);
+        log.data = abi.encode(amount, requiredMeasurement, modelHash, inputHash, keccak256(""), uint64(block.timestamp + 1 days));
     }
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
+import {CalldataEnvelope} from "./CalldataEnvelope.sol";
 
 import {EvmV1Decoder} from "@gluwa/usc-contracts/contracts/decoding/EvmV1Decoder.sol";
 
@@ -10,8 +11,7 @@ import {ComputeCredit} from "./ComputeCredit.sol";
 
 /// @title ComputeSettlement
 /// @notice Settles payment for off-chain AI compute only when two independent proofs, of two
-/// different kinds, agree inside a single transaction. The model's own verdict then decides where
-/// the money goes.
+/// different kinds, agree inside a single transaction. Service completion decides the split.
 ///
 /// @dev The two proofs:
 ///
@@ -30,10 +30,9 @@ import {ComputeCredit} from "./ComputeCredit.sol";
 /// enclaves. It reads the measurement out of the proven foreign event and enforces that, which is
 /// what makes this cross-chain business logic rather than cross-chain data delivery.
 ///
-/// **The model's output is consequential, not decorative.** The enclave signs an outcome and a
-/// score alongside the result, and the contract splits settlement accordingly. A rejected job
-/// returns the buyer's claim rather than paying the provider. That is an AI decision executing on
-/// chain rather than an AI result that merely gets paid for.
+/// The signed service outcome controls the accounting split. A successfully computed decline
+/// still pays the provider: applicant approval is private model output, not service completion.
+/// Source-chain ETH release is a separate, explicitly trusted return-relayer operation.
 contract ComputeSettlement is AttestcoinProven {
     /// @notice What the enclave concluded about the job it was asked to run.
     enum Outcome {
@@ -49,6 +48,8 @@ contract ComputeSettlement is AttestcoinProven {
     /// of them and the signature no longer recovers.
     struct EnclaveAttestation {
         bytes32 resultHash;
+        bytes32 requestHash;
+        bytes32 deliveryHash;
         Outcome outcome;
         uint16 scoreBps;
         uint8 v;
@@ -56,14 +57,14 @@ contract ComputeSettlement is AttestcoinProven {
         bytes32 s;
     }
 
-    /// @notice keccak256("JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32)")
+    /// @notice keccak256("JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32,bytes32,uint64)")
     /// @dev Asserted against the escrow's own event in the test suite rather than trusted as a
     /// hand-copied constant.
-    bytes32 public constant JOB_CREATED_SIG = 0xec2fed0760e6955a9bc000ce72aa29c0bebbaa6d733c0909a7281032b5ca76da;
+    bytes32 public constant JOB_CREATED_SIG = keccak256("JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32,bytes32,uint64)");
 
     /// @notice Domain tag for the enclave's signature, so a signature cannot be lifted to another
     /// deployment, another chain or another protocol.
-    string public constant SIGNING_DOMAIN = "proofsettle.result.v1";
+    string public constant SIGNING_DOMAIN = "proofsettle.result.v2";
 
     uint16 public constant BPS_DENOMINATOR = 10_000;
 
@@ -106,6 +107,10 @@ contract ComputeSettlement is AttestcoinProven {
         bytes32 queryId
     );
 
+    error RequestMismatch(bytes32 expected, bytes32 signed);
+    error DeliveryMismatch(bytes32 expected, bytes32 actual);
+    error SettlementExpired(uint64 settleBy);
+    event RequestBound(bytes32 indexed jobId, bytes32 requestHash, bytes32 deliveryHash);
     error ZeroAddress();
     error TransactionFailedOnSource(uint8 receiptStatus);
     error UnsupportedTransactionType(uint8 txType);
@@ -156,6 +161,7 @@ contract ComputeSettlement is AttestcoinProven {
         jobId = job.jobId;
 
         if (settlements[jobId].settledAt != 0) revert JobAlreadySettled(jobId);
+        _checkRequest(job, att);
 
         // Proof two. Reverts unless the signature came from the live key bound to exactly the
         // measurement the buyer named on the source chain. The verdict sits inside the signed
@@ -194,8 +200,18 @@ contract ComputeSettlement is AttestcoinProven {
             queryId
         );
 
+        emit RequestBound(jobId, att.requestHash, att.deliveryHash);
+
         if (toProvider > 0) CREDIT.mint(job.provider, toProvider);
         if (toPayer > 0) CREDIT.mint(job.payer, toPayer);
+    }
+
+    function _checkRequest(Job memory job, EnclaveAttestation calldata att) private view {
+        if (block.timestamp >= job.settleBy) revert SettlementExpired(job.settleBy);
+        bytes32 expectedRequest = keccak256(abi.encode(job.modelHash, job.inputHash, job.envelopeHash));
+        if (att.requestHash != expectedRequest) revert RequestMismatch(expectedRequest, att.requestHash);
+        bytes32 delivered = keccak256(CalldataEnvelope.read(msg.data, 4));
+        if (att.deliveryHash != delivered) revert DeliveryMismatch(att.deliveryHash, delivered);
     }
 
     /// @notice How a verdict divides the payment.
@@ -223,13 +239,13 @@ contract ComputeSettlement is AttestcoinProven {
     /// @dev Exposed so the enclave and the off-chain worker can assert byte-for-byte parity against
     /// this contract rather than reimplementing the formula and drifting from it silently. The
     /// verdict is inside the digest, so altering it invalidates the signature.
-    function resultDigest(bytes32 jobId, bytes32 resultHash_, Outcome outcome, uint16 scoreBps)
+    function resultDigest(bytes32 jobId, bytes32 resultHash_, Outcome outcome, uint16 scoreBps, bytes32 requestHash, bytes32 deliveryHash)
         public
         view
         returns (bytes32)
     {
         return keccak256(
-            abi.encode(SIGNING_DOMAIN, block.chainid, address(this), jobId, resultHash_, uint8(outcome), scoreBps)
+            abi.encode(SIGNING_DOMAIN, block.chainid, address(this), jobId, resultHash_, uint8(outcome), scoreBps, requestHash, deliveryHash)
         );
     }
 
@@ -239,6 +255,10 @@ contract ComputeSettlement is AttestcoinProven {
         address provider;
         uint256 amount;
         bytes32 requiredMeasurement;
+        bytes32 modelHash;
+        bytes32 inputHash;
+        bytes32 envelopeHash;
+        uint64 settleBy;
     }
 
     /// @dev Pull the job out of the proven foreign transaction.
@@ -261,12 +281,12 @@ contract ComputeSettlement is AttestcoinProven {
         // jobId, payer, provider are indexed, so topics is [signature, jobId, payer, provider].
         if (log.topics.length != 4) revert MalformedEvent();
         // amount, requiredMeasurement, modelHash, inputHash are not indexed: four 32 byte words.
-        if (log.data.length != 128) revert MalformedEvent();
+        if (log.data.length != 192) revert MalformedEvent();
 
         job.jobId = log.topics[1];
         job.payer = address(uint160(uint256(log.topics[2])));
         job.provider = address(uint160(uint256(log.topics[3])));
-        (job.amount, job.requiredMeasurement,,) = abi.decode(log.data, (uint256, bytes32, bytes32, bytes32));
+        (job.amount, job.requiredMeasurement, job.modelHash, job.inputHash, job.envelopeHash, job.settleBy) = abi.decode(log.data, (uint256, bytes32, bytes32, bytes32, bytes32, uint64));
     }
 
     /// @dev Recover the signer, rejecting the malleable half of the curve and any recovery id
@@ -279,7 +299,7 @@ contract ComputeSettlement is AttestcoinProven {
         if (att.v != 27 && att.v != 28) revert BadSignatureV(att.v);
 
         address recovered =
-            ecrecover(resultDigest(jobId, att.resultHash, att.outcome, att.scoreBps), att.v, att.r, att.s);
+            ecrecover(resultDigest(jobId, att.resultHash, att.outcome, att.scoreBps, att.requestHash, att.deliveryHash), att.v, att.r, att.s);
         if (recovered == address(0)) revert SignatureRecoveryFailed();
         return recovered;
     }

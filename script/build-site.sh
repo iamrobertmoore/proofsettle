@@ -28,10 +28,14 @@ out="_site"
 rm -rf "$out"
 mkdir -p "$out"
 
-for f in site/index.html site/desk.html site/deployments.json site/enclave.json deck/ProofSettle-deck.pdf enclave/attestation.jwt; do
+for f in site/index.html site/verify.html site/desk.html site/style.css site/fonts.css site/home.js site/demo.json site/abis.json site/deployments.json site/enclave.json deck/ProofSettle-deck.pdf enclave/attestation.jwt; do
     [ -f "$f" ] || fail "missing $f. The site is incomplete without it."
     cp "$f" "$out/"
 done
+
+cp -R site/vendor "$out/vendor"
+[ ! -d site/releases ] || cp -R site/releases "$out/releases"
+[ ! -d site/attestations ] || cp -R site/attestations "$out/attestations"
 
 # The page reads deployments.json to prefill itself. A published site with empty addresses looks
 # broken to the first person who opens it, so refuse to ship one.

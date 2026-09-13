@@ -13,6 +13,8 @@
  * project exists to make visible.
  */
 import { ethers } from 'ethers';
+import { requestCommitment, keccak256, toHex } from '../enclave/crypto.mjs';
+import { canonical } from '../enclave/model.mjs';
 
 export enum Outcome {
   Rejected = 0,
@@ -35,6 +37,8 @@ export interface JobRequest {
 
 export interface SignedResult {
   resultHash: string;
+  requestHash: string;
+  deliveryHash: string;
   outcome: Outcome;
   scoreBps: number;
   v: number;
@@ -49,7 +53,7 @@ export interface SignedResult {
   rejection?: { rejected: string; detail: string | null } & Record<string, unknown>;
 }
 
-const SIGNING_DOMAIN = 'proofsettle.result.v1';
+const SIGNING_DOMAIN = 'proofsettle.result.v2';
 
 /** Must match ComputeSettlement.resultDigest byte for byte. */
 export function resultDigest(
@@ -58,12 +62,14 @@ export function resultDigest(
   jobId: string,
   resultHash: string,
   outcome: Outcome,
-  scoreBps: number
+  scoreBps: number,
+  requestHash: string,
+  deliveryHash: string
 ): string {
   return ethers.keccak256(
     ethers.AbiCoder.defaultAbiCoder().encode(
-      ['string', 'uint256', 'address', 'bytes32', 'bytes32', 'uint8', 'uint16'],
-      [SIGNING_DOMAIN, chainId, settlementAddress, jobId, resultHash, outcome, scoreBps]
+      ['string', 'uint256', 'address', 'bytes32', 'bytes32', 'uint8', 'uint16', 'bytes32', 'bytes32'],
+      [SIGNING_DOMAIN, chainId, settlementAddress, jobId, resultHash, outcome, scoreBps, requestHash, deliveryHash]
     )
   );
 }
@@ -82,12 +88,17 @@ export async function signResult(job: JobRequest): Promise<SignedResult> {
 
     // Verify the enclave's own arithmetic before trusting it enough to spend gas on.
     const digest = resultDigest(
-      job.settlementAddress, job.chainId, job.jobId, out.resultHash, out.outcome, out.scoreBps
+      job.settlementAddress, job.chainId, job.jobId, out.resultHash, out.outcome, out.scoreBps, out.requestHash, out.deliveryHash
     );
     const recovered = ethers.recoverAddress(digest, { r: out.r, s: out.s, v: out.v });
     if (recovered.toLowerCase() !== out.signer.toLowerCase()) {
       throw new Error(`enclave signature does not recover to its claimed signer (${recovered} vs ${out.signer})`);
     }
+    if (out.requestHash !== requestCommitment(job.modelHash, job.inputHash, job.ciphertext)) throw new Error('enclave signed a different request');
+    const delivery = out.resultCiphertext ? Buffer.from(out.resultCiphertext.slice(2), 'hex') : Buffer.concat([Buffer.from([2]), Buffer.from(canonical(out.rejection))]);
+    if (out.deliveryHash !== toHex(keccak256(delivery))) throw new Error('enclave delivery does not match signature');
+    const identity = await fetch(`${url.replace(/\/$/, '')}/identity`).then(r => r.json()) as any;
+    if (identity.attested !== true || identity.nonceBound !== true || identity.signer.toLowerCase() !== recovered.toLowerCase()) throw new Error('Enclave identity does not report matching hardware-bound keys');
     return { ...out, attested: true };
   }
 
@@ -107,10 +118,13 @@ export async function signResult(job: JobRequest): Promise<SignedResult> {
 
   const dev = await devIdentity(devKey);
   const { outcome, scoreBps, resultHash, resultCiphertext, rejection } = dev.run(job);
-  const digest = resultDigest(job.settlementAddress, job.chainId, job.jobId, resultHash, outcome, scoreBps);
+  const requestHash = requestCommitment(job.modelHash, job.inputHash, job.ciphertext);
+  const delivery = resultCiphertext ? Buffer.from(resultCiphertext.slice(2), 'hex') : Buffer.concat([Buffer.from([2]), Buffer.from(canonical(rejection))]);
+  const deliveryHash = toHex(keccak256(delivery));
+  const digest = resultDigest(job.settlementAddress, job.chainId, job.jobId, resultHash, outcome, scoreBps, requestHash, deliveryHash);
   const sig = dev.wallet.signingKey.sign(digest);
 
-  return { resultHash, outcome, scoreBps, v: sig.v, r: sig.r, s: sig.s, attested: false, signer: dev.wallet.address, resultCiphertext, rejection };
+  return { resultHash, requestHash, deliveryHash, outcome, scoreBps, v: sig.v, r: sig.r, s: sig.s, attested: false, signer: dev.wallet.address, resultCiphertext, rejection };
 }
 
 /**
@@ -161,7 +175,7 @@ export async function devIdentity(devKey: string) {
       catch (e: any) { return rejected(job.jobId, 'input-invalid', String(e.message ?? e)); }
       const result = { v: 1, jobId: job.jobId, build: BUILD, modelHash, inputHash: job.inputHash, decision: scored.decision, probability: scored.probability, scoreBps: scored.scoreBps, contributions: scored.contributions };
       const resultHash = hashOf(result);
-      const resultCiphertext = crypto.toHex(envelope.seal(ephemeralRaw, Buffer.from(canonical(result), 'utf8'), Buffer.from('proofsettle.result.v1' + job.jobId.toLowerCase())).envelope);
+      const resultCiphertext = crypto.toHex(envelope.seal(ephemeralRaw, Buffer.from(canonical(result), 'utf8'), Buffer.from('proofsettle.result.v2' + job.jobId.toLowerCase())).envelope);
       return { outcome: Outcome.Accepted, scoreBps: 10_000, resultHash, resultCiphertext, rejection: undefined };
     },
   };

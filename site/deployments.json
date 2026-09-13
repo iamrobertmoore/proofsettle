@@ -2,12 +2,13 @@
   "_comment": "Filled in after deployment. The page reads this to prefill its inputs.",
   "network": "creditcoin-cc3-testnet",
   "chainId": 102031,
-  "settlement": "0x010C1F801d5FAE37FD43C9B21025fE579dCC1F06",
+  "settlement": "0x25fdA5D46B2A6Ef5184D2d2ceCa766cB66D3E6E0",
   "enclaveRegistry": "0xAc014b7Df7f9b2dA343d895F22a392c655338bFb",
-  "computeCredit": "0x43872Caef4b8286D93d155e34e602C0Aa3a78Eee",
-  "sourceEscrow": "0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40",
+  "computeCredit": "0xCD3FEA58801b1a0ce05fF5f22B8e0593A9A0e761",
+  "sourceEscrow": "0x5d5474Fe373bb620e29BF5F2C50FaCA93AD80941",
   "sourceChain": "ethereum-sepolia",
   "sourceChainKey": 1,
   "provider": "0xDA37b5B8BcCaF773F36849347C205AAAC0453919",
-  "exampleJobId": "0xb5b56cc8d8ee6c826e22b689a8b146b3e6f48e3d4e90650008080f391b9102a7"
+  "exampleJobId": "0xdb0aa8731c5f18eceecd1f316b6d76231ce244441e08dd1a407bd75f1343db04",
+  "version": 2
 }

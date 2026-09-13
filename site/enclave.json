@@ -1,14 +1,14 @@
 {
   "_comment": "Written by enclave/deploy/40-register.sh from the running enclave and its verified token. The desk page re-checks every field here against the registry and against Google.",
-  "build": "proofsettle-enclave/1.2.0",
-  "measurement": "0xea75311ddf00a6514edcb8d35cd9de829a46f2ad7d2dcc3987a4d73c2c91b741",
-  "signer": "0x986fb1b97e1ae22585a8c9f80d6f44bfc2e884dd",
-  "encryptionPublicKey": "0xa2df1b2bad20f4237aee23a9f606ea2fcb1a15f10f72018b54dabbd575cf6a68",
+  "build": "proofsettle-enclave/2.0.0",
+  "measurement": "0x7053ba1c36f694fbeb0aa7ecd92c680b1274d18cf05c57380391e2e2bdf82678",
+  "signer": "0xc77765e871a635a9f5968a67313a8cdb434df740",
+  "encryptionPublicKey": "0x32a456d0bf2bd46478bb3cd24895090fc7c55fbe06313bb8b412af8b16e0a33b",
   "modelHash": "0x9d119d29c500f3fea93c21c22cc5930227e32f6542aaa29eca22b211fdfc206d",
   "modelName": "proofsettle-thin-file-scorer 1.1.0",
-  "previousMeasurement": "0xc0a8e85a53c13a607b108683cd75ad896047a2b526d8ef64065bb27aac1396d0",
-  "previousBuild": "proofsettle-enclave/1.1.0",
+  "previousMeasurement": "0xea75311ddf00a6514edcb8d35cd9de829a46f2ad7d2dcc3987a4d73c2c91b741",
+  "previousBuild": "proofsettle-enclave/1.2.0",
   "provider": "0xDA37b5B8BcCaF773F36849347C205AAAC0453919",
   "nonceBound": true,
-  "registeredAt": "2026-09-10T07:31:16.785Z"
+  "registeredAt": "2026-09-13T15:03:01.757Z"
 }

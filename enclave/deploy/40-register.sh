@@ -84,12 +84,17 @@ EVIDENCE_HASH="$(node enclave/verify-token.mjs enclave/attestation.jwt | sed -n 
 # "urn:proofsettle:development-signer:not-attested" into the on-chain record of a genuinely
 # attested enclave. Registration is permanent in this registry, so that mistake cannot be edited
 # afterwards. Default fresh every time, and override only through a variable that means it.
-EVIDENCE_URI="${EVIDENCE_URI_OVERRIDE:-https://raw.githubusercontent.com/iamrobertmoore/proofsettle/main/enclave/attestation.jwt}"
+mkdir -p site/attestations
+cp enclave/attestation.jwt "site/attestations/${EVIDENCE_HASH}.jwt"
+EVIDENCE_URI="${EVIDENCE_URI_OVERRIDE:-https://proofsettle.pages.dev/attestations/${EVIDENCE_HASH}.jwt}"
 
 case "$EVIDENCE_URI" in
     *not-attested*|*development-signer*)
         die "the evidence URI says this is a development signer, but the token says it is attested. Refusing to write that contradiction to a permanent record. Unset EVIDENCE_URI_OVERRIDE and run again." ;;
 esac
+
+printf '%s' "$identity" | node --input-type=module -e '
+let b="";process.stdin.on("data",x=>b+=x).on("end",()=>{const id=JSON.parse(b);const c=JSON.parse(Buffer.from(id.attestationToken.split(".")[1],"base64url"));const n=[].concat(c.eat_nonce??[]).map(x=>String(x).toLowerCase());if(c.dbgstat!=="disabled-since-boot"||c.secboot!==true||!n.includes(id.signer.toLowerCase())||!n.includes(id.encryptionPublicKey.toLowerCase())){console.error("Production, secure boot and both key bindings are required");process.exit(1)}});' || die "unsafe enrollment evidence"
 
 say "3. Register the binding on Creditcoin"
 echo "  registry     $ENCLAVE_REGISTRY_ADDRESS"

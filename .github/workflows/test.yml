@@ -22,7 +22,8 @@ jobs:
 
       # The contracts import @gluwa/usc-contracts and @openzeppelin from node_modules, which
       # foundry.toml lists as a library path, so this has to happen before forge test.
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
 
       - uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -48,3 +49,6 @@ jobs:
       # real, locally signed attestation token.
       - name: Launch decision
         run: ./enclave/deploy/test/run.sh
+
+      - name: Browser verification and desk
+        run: npm run test:site

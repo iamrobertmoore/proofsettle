@@ -1,16 +1,7 @@
 /**
  * Proves the enclave's hand-rolled crypto matches a reference implementation.
  *
- * The enclave has zero runtime dependencies on purpose: a supply chain is a poor thing to put
- * inside a trust boundary. The cost of that choice is that keccak256 and secp256k1 are implemented
- * by hand, and hand-rolled crypto that has not been checked against a reference is a liability
- * rather than an asset.
- *
- * This checks every primitive against ethers, including the exact ABI encoding the Solidity
- * contract uses, so a drift in any of them fails here rather than silently producing signatures
- * the chain will reject.
- *
- *   node enclave/verify-crypto.mjs
+ * Pinned standard primitives are checked against ethers reference results and the contract ABI.
  */
 import { ethers } from 'ethers';
 import { keccak256 } from './crypto.mjs';
@@ -60,11 +51,11 @@ const jobId = ethers.keccak256(ethers.toUtf8Bytes('job-1'));
 const resultHash = ethers.keccak256(ethers.toUtf8Bytes('result-1'));
 
 for (const [outcome, bps] of [[0, 0], [1, 10000], [2, 2500], [2, 9999]]) {
-  const mine = '0x' + encodeDigest(chainId, settlement, jobId, resultHash, outcome, bps).toString('hex');
+  const mine = '0x' + encodeDigest(chainId, settlement, jobId, resultHash, outcome, bps, jobId, resultHash).toString('hex');
   const reference = ethers.keccak256(
     ethers.AbiCoder.defaultAbiCoder().encode(
-      ['string', 'uint256', 'address', 'bytes32', 'bytes32', 'uint8', 'uint16'],
-      ['proofsettle.result.v1', chainId, settlement, jobId, resultHash, outcome, bps]
+      ['string', 'uint256', 'address', 'bytes32', 'bytes32', 'uint8', 'uint16', 'bytes32', 'bytes32'],
+      ['proofsettle.result.v2', chainId, settlement, jobId, resultHash, outcome, bps, jobId, resultHash]
     )
   );
   check(`digest(outcome=${outcome}, bps=${bps})`, mine, reference);

@@ -33,12 +33,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Assemble the published directory
-        run: |
-          mkdir -p _site
-          cp site/index.html site/desk.html site/deployments.json site/enclave.json site/measurement.json _site/
-          cp enclave/attestation.jwt _site/
-          cp deck/ProofSettle-deck.pdf _site/
-          ls -la _site
+        run: ./script/build-site.sh
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

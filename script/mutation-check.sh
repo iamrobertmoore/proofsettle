@@ -132,6 +132,19 @@ mutate "let the partial split create value" \
     'toPayer = amount;' \
     "test_split_is_publicly_checkable_and_conserves_value"
 
+mutate "drop request binding" "src/ComputeSettlement.sol" \
+    'if (att.requestHash != expectedRequest)' 'if (false)' \
+    "test_rejects_real_signer_for_substituted_input"
+mutate "drop encrypted delivery binding" "src/ComputeSettlement.sol" \
+    'if (att.deliveryHash != delivered)' 'if (false)' \
+    "test_rejects_a_missing_signed_delivery"
+mutate "drop the settlement deadline" "src/ComputeSettlement.sol" \
+    'if (block.timestamp >= job.settleBy)' 'if (false)' \
+    "test_rejects_settlement_at_the_source_deadline"
+mutate "let a released payment refund again" "src/ComputeJobEscrow.sol" \
+    'if (finalized[jobId]) revert AlreadyFinalized();' '// removed' \
+    "test_finalized_job_cannot_take_timeout_refund"
+
 restore
 
 echo

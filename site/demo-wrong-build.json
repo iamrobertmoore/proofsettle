@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "label": "Public synthetic example; this disposable answer key is intentionally published.",
+  "mode": "wrong-build",
+  "sourceTx": "0xb72728c3de653a7e42b6d86d70a3682c44b56f6e5afa28d91d9d2699a485fa0e",
+  "jobId": "0xad0ea3f1197cabf212bc9dca3b7dd37271dc62c43b339b94b8d6b26f8d730b5e",
+  "sourceBlock": 11696649,
+  "record": {
+    "months_of_history": 6,
+    "inflows_per_month": 14,
+    "inflow_regularity": 0.75,
+    "avg_monthly_inflow_usd": 300,
+    "balance_volatility": 0.4,
+    "supplier_on_time_ratio": 0.8,
+    "prior_loans_repaid": 0,
+    "prior_loans_defaulted": 0,
+    "_nonce": "0x8c80ee37ff8d861187a32ec6a0681310ff6ce523ea7719638d6dab865c001538"
+  },
+  "returnKey": {
+    "k": "0x302e020100300506032b656e0422042030d4e06b86e142abbf55945005d282eddcb747c63a4142ff24d4db7222928e4b",
+    "raw": "0xb071d2b6adc588cf98dab6773d50828d909c1141d4871c951e78e5e53eec831f"
+  },
+  "requiredMeasurement": "0xfc6a58240175cf4640939cdb23e780a932aa0276104b3ee4728816853118a9e0",
+  "modelHash": "0x9d119d29c500f3fea93c21c22cc5930227e32f6542aaa29eca22b211fdfc206d",
+  "inputHash": "0xccdc92f8e1090bb16dc476471047cab751eb71cf5dfd6826768b88380025a523",
+  "tx": "0x9e4cd30ef97ac952f999098d39bc6c54f89dc1fa3c3bd5596a11e60caee38777"
+}

@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0"
+  },
+  "name": "proofsettle-enclave",
+  "version": "2.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module"
+}

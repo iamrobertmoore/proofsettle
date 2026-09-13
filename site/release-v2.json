@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "createdAt": "2026-09-13T14:58:24.411Z",
+  "registry": "0xAc014b7Df7f9b2dA343d895F22a392c655338bFb",
+  "decoder": "0xaF89A479E20890fDfFa4DeaDd3b5A2f7957b1E40",
+  "transactions": {
+    "sourceEscrow": "0xaec78be4ec1c39336bbb6228c9b11298902feb4948522d13cb29ace88b188095",
+    "computeCredit": "0x3b2c55dbee95e92fede801a5f3c43255b0c4c4b339352eebbccf07ca67f979c8",
+    "settlement": "0x4a05e9ca41f9e12e52512b211807b23f0de55179b40e614c0a17524565553cb7",
+    "minter": "0x680f929b315de21f5ffa15787e56c3c6b27900051800cda41e4d487a1f6e9e97"
+  },
+  "sourceEscrow": "0x5d5474Fe373bb620e29BF5F2C50FaCA93AD80941",
+  "computeCredit": "0xCD3FEA58801b1a0ce05fF5f22B8e0593A9A0e761",
+  "settlement": "0x25fdA5D46B2A6Ef5184D2d2ceCa766cB66D3E6E0"
+}

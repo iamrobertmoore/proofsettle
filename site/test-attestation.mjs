@@ -9,19 +9,7 @@
  *
  * A page that accepts a valid attestation and also accepts a tampered one has told you nothing.
  */
-// Playwright is not a dependency of this project. The sandbox this was built in provides one, and
-// PW_PLAYWRIGHT / PW_CHROMIUM let you point at your own. Without a browser the test says so and
-// exits clean rather than failing, because a missing browser is not a broken page.
-const PW = process.env.PW_PLAYWRIGHT ?? '/opt/node22/lib/node_modules/playwright/index.js';
-let chromium;
-try {
-  const mod = await import(PW);
-  chromium = mod.chromium ?? mod.default?.chromium;   // the bundled build is CommonJS
-} catch { /* handled below */ }
-if (!chromium) {
-  console.log('skipped: no usable playwright at ' + PW + '. Set PW_PLAYWRIGHT to run this.');
-  process.exit(0);
-}
+import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -80,7 +68,7 @@ const srv = createServer(async (req, res) => {
   if (path === '/jwks')  { res.writeHead(200,{'content-type':'application/json'}); return res.end(JSON.stringify({ keys: [jwk] })); }
   if (path === '/token') { res.writeHead(200,{'content-type':'text/plain'}); return res.end(TOKEN); }
   try {
-    const f = path === '/' ? '/index.html' : path;
+    const f = path === '/' ? '/verify.html' : path;
     const buf = await readFile(SITE + f);
     res.writeHead(200, {'content-type': f.endsWith('.json') ? 'application/json' : 'text/html'});
     res.end(buf);
@@ -88,7 +76,7 @@ const srv = createServer(async (req, res) => {
 });
 await new Promise(r => srv.listen(8130, r));
 
-const b = await chromium.launch({ executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: process.env.PW_CHROMIUM ?? chromium.executablePath() });
 const url = 'http://127.0.0.1:8130/?rpc=http://127.0.0.1:8130/rpc&jwks=http://127.0.0.1:8130/jwks&token=http://127.0.0.1:8130/token';
 
 async function run(label) {

@@ -4,10 +4,9 @@ pragma solidity 0.8.30;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @title ComputeCredit
-/// @notice The provider's claim, issued on Creditcoin when a job settles.
-/// @dev Value conservation mirrors the Attestcoin bridging tutorial: funds are locked on the
-/// source chain and the equivalent claim is issued here. Nothing is created that was not paid for,
-/// and the only address that can issue is the settlement contract.
+/// @notice Non-transferable historical accounting receipts on Creditcoin.
+/// @dev Receipts are not money, redeemable claims or evidence of a source-chain withdrawal.
+/// The fixed source-chain return relayer separately releases the original payment.
 contract ComputeCredit is ERC20 {
     address public minter;
     address public immutable DEPLOYER;
@@ -19,7 +18,7 @@ contract ComputeCredit is ERC20 {
     error MinterAlreadySet();
     error ZeroAddress();
 
-    constructor() ERC20("Compute Credit", "CCRD") {
+    constructor() ERC20("ProofSettle Receipt", "PSR") {
         DEPLOYER = msg.sender;
     }
 
@@ -39,4 +38,11 @@ contract ComputeCredit is ERC20 {
         if (msg.sender != minter) revert NotMinter();
         _mint(to, amount);
     }
+    error NonTransferableReceipt();
+    /// @dev Historical accounting receipts, not redeemable or transferable money.
+    function _update(address from, address to, uint256 value) internal override {
+        if (from != address(0)) revert NonTransferableReceipt();
+        super._update(from, to, value);
+    }
+
 }

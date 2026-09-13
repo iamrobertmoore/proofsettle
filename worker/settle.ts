@@ -5,7 +5,8 @@
  * block containing each payment, builds the inclusion proof, obtains the enclave's signed verdict,
  * and submits both to ComputeSettlement on Creditcoin.
  *
- * The worker is deliberately not trusted with anything. It cannot forge a payment, because the
+ * The proof-submission role cannot forge either proof. The separately authorized return-relayer
+ * key IS trusted by the source escrow; see worker/return.ts. It cannot forge a payment, because the
  * proof is verified on chain by the Attestcoin precompile. It cannot forge a verdict, because the
  * verdict is inside the enclave's signature. It cannot read the buyer's input or the enclave's
  * result, because both are sealed to keys it does not hold: the input rides in the calldata of the
@@ -23,13 +24,14 @@
  *   npx tsx worker/settle.ts once <txHash>    settle a single known payment
  */
 import 'dotenv/config';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { Contract, EventLog, JsonRpcProvider, Wallet, ethers } from 'ethers';
 import { chainInfo, proofProvider } from '@gluwa/usc-sdk';
 
 import escrowAbi from '../out/ComputeJobEscrow.sol/ComputeJobEscrow.json' with { type: 'json' };
 import settlementAbi from '../out/ComputeSettlement.sol/ComputeSettlement.json' with { type: 'json' };
 import { signResult, Outcome } from './enclave-client.js';
+import { releasePayment } from './return.js';
 import { PatientBlockProvider } from './block-provider.js';
 
 const need = (k: string): string => {
@@ -70,8 +72,8 @@ async function main() {
     }
   }
 
-  const cc = new JsonRpcProvider(CC_RPC);
-  const sepolia = new JsonRpcProvider(SEPOLIA_RPC);
+  const cc = new JsonRpcProvider(CC_RPC, undefined, {batchMaxCount:1});
+  const sepolia = new JsonRpcProvider(SEPOLIA_RPC, undefined, {batchMaxCount:1});
   const wallet = new Wallet(need('WORKER_PRIVATE_KEY'), cc);
 
   const escrow = new Contract(need('SOURCE_ESCROW_ADDRESS'), (escrowAbi as any).abi, sepolia);
@@ -102,8 +104,8 @@ async function main() {
     return;
   }
 
-  let fromBlock = Number(process.env.WORKER_FROM_BLOCK ?? readCursor() ?? (await sepolia.getBlockNumber()));
-  const seen = new Set<string>();
+  let fromBlock = Number(process.env.WORKER_FROM_BLOCK || readCursor() || (await sepolia.getBlockNumber()));
+  const pending = new Set<string>(readPending());
   console.log(`watching from Sepolia block ${fromBlock} (cursor in ${STATE_FILE})\n`);
 
   for (;;) {
@@ -113,19 +115,23 @@ async function main() {
         const events = await escrow.queryFilter(escrow.filters.JobCreated(), fromBlock, head);
         for (const ev of events) {
           if (!(ev instanceof EventLog)) continue;
-          if (seen.has(ev.transactionHash)) continue;
-          seen.add(ev.transactionHash);
-          console.log(`\nJobCreated in ${ev.transactionHash} (block ${ev.blockNumber})`);
+          pending.add(ev.transactionHash);
+        }
+        fromBlock = head + 1;
+        writeCursor(fromBlock, [...pending]);
+        for (const txHash of [...pending]) {
+          console.log(`\nProcessing ${txHash}`);
           try {
-            await settleOne(ev.transactionHash, { cc, sepolia, settlement, info, proofs, wallet });
+            await settleOne(txHash, { cc, sepolia, settlement, info, proofs, wallet });
+            pending.delete(txHash);
+            writeCursor(fromBlock, [...pending]);
           } catch (e: any) {
             // One job failing must not stop the worker. Report it, keep going, leave it unsettled
             // and visible rather than swallowed.
             console.error(`  job failed: ${e.shortMessage ?? e.message ?? e}`);
           }
         }
-        fromBlock = head + 1;
-        writeCursor(fromBlock);
+        writeCursor(fromBlock, [...pending]);
       }
     } catch (e: any) {
       console.error(`poll error: ${e.shortMessage ?? e.message ?? e}`);
@@ -169,10 +175,14 @@ async function settleOne(txHash: string, ctx: Ctx) {
 
   const already = await settlement.settlements(job.jobId);
   if (already.settledAt !== 0n) {
-    console.log('  already settled, skipping');
+    console.log('  already settled; checking the Sepolia return leg');
+    await releasePayment(job.jobId, settlement, sepolia);
     return;
   }
 
+  if (job.settleBy <= BigInt(Math.floor(Date.now() / 1000))) {
+    console.log('  settlement window expired; the buyer retains the source timeout refund'); return;
+  }
   // The buyer's sealed input is whatever follows the ABI-encoded arguments in the payment's
   // calldata. The worker carries it to the enclave without being able to read it.
   const { fromTrailer, withTrailer } = await envelopeMod;
@@ -216,6 +226,8 @@ async function settleOne(txHash: string, ctx: Ctx) {
   };
   const attestation = {
     resultHash: att.resultHash,
+    requestHash: att.requestHash,
+    deliveryHash: att.deliveryHash,
     outcome: att.outcome,
     scoreBps: att.scoreBps,
     v: att.v,
@@ -223,14 +235,17 @@ async function settleOne(txHash: string, ctx: Ctx) {
     s: att.s,
   };
 
+  const rider = att.resultCiphertext
+    ? Buffer.from(att.resultCiphertext.slice(2), 'hex')
+    : Buffer.concat([Buffer.from([2]), Buffer.from((await import('../enclave/model.mjs')).canonical(att.rejection), 'utf8')]);
+  const data = settlement.interface.encodeFunctionData('settle', [CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation]) + withTrailer(rider).toString('hex');
+
   if (ctx.expectRefusal) {
     // Ask the node what would happen, before spending anything. On pallet-evm the revert reason
     // does not always come back, so this is reported for what it is either way.
     let simulated = 'the node did not return a reason';
     try {
-      await settlement.settle.staticCall(
-        CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation
-      );
+      await ctx.cc.call({to: await settlement.getAddress(), data});
       throw new Error('the simulation SUCCEEDED, so this job would settle. Nothing was refused.');
     } catch (e: any) {
       if (/simulation SUCCEEDED/.test(e.message ?? '')) throw e;
@@ -243,7 +258,7 @@ async function settleOne(txHash: string, ctx: Ctx) {
 
     const sent = await ctx.wallet.sendTransaction({
       to: await settlement.getAddress(),
-      data: settlement.interface.encodeFunctionData('settle', [CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation]),
+      data,
       gasLimit: 700_000n,
     });
     console.log(`  submitted ${sent.hash}`);
@@ -271,13 +286,6 @@ async function settleOne(txHash: string, ctx: Ctx) {
   // An accepted result rides sealed (envelope version 0x01). A refusal has no key to seal to and
   // nothing secret in it, so it rides in the clear as canonical JSON behind a 0x02 byte, and the
   // buyer's browser checks its hash against the one the chain carries.
-  const rider = att.resultCiphertext
-    ? Buffer.from(att.resultCiphertext.slice(2), 'hex')
-    : att.rejection
-      ? Buffer.concat([Buffer.from([0x02]), Buffer.from((await import('../enclave/model.mjs')).canonical(att.rejection), 'utf8')])
-      : null;
-  const data = settlement.interface.encodeFunctionData('settle', [CHAIN_KEY, d.headerNumber, d.txBytes, merkleProof, continuityProof, attestation])
-    + (rider ? withTrailer(rider).toString('hex') : '');
   const to = await settlement.getAddress();
 
   let gasLimit: bigint;
@@ -334,6 +342,10 @@ async function settleOne(txHash: string, ctx: Ctx) {
   console.log(`           provider ${ethers.formatEther(parsed.args.paidToProvider)}`);
   console.log(`           payer    ${ethers.formatEther(parsed.args.returnedToPayer)}`);
   console.log(`           enclave  ${parsed.args.enclave}`);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try { await releasePayment(job.jobId, settlement, sepolia); return; }
+    catch (e: any) { if (attempt === 4) throw e; console.log(`  return leg pending: ${e.shortMessage ?? e.message}`); await new Promise(r => setTimeout(r, 15000)); }
+  }
 }
 
 interface ProofSource {
@@ -384,17 +396,22 @@ async function waitUntilAttested(info: chainInfo.PrecompileChainInfoProvider, he
 function readCursor(): number | undefined {
   try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')).fromBlock; } catch { return undefined; }
 }
-function writeCursor(fromBlock: number) {
-  try { writeFileSync(STATE_FILE, JSON.stringify({ fromBlock, updatedAt: new Date().toISOString() })); } catch {}
+function readPending(): string[] {
+  try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')).pending ?? []; } catch { return []; }
+}
+function writeCursor(fromBlock: number, pending: string[] = []) {
+  const tmp = STATE_FILE + '.tmp';
+  writeFileSync(tmp, JSON.stringify({ fromBlock, pending, updatedAt: new Date().toISOString() }));
+  renameSync(tmp, STATE_FILE);
 }
 
-const JOB_CREATED_TOPIC = ethers.id('JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32)');
+const JOB_CREATED_TOPIC = ethers.id('JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32,bytes32,uint64)');
 
 function decodeJob(receipt: ethers.TransactionReceipt) {
-  const log = receipt.logs.find((l) => l.topics[0] === JOB_CREATED_TOPIC);
+  const log = receipt.logs.find((l) => l.topics[0] === JOB_CREATED_TOPIC && l.address.toLowerCase() === need('SOURCE_ESCROW_ADDRESS').toLowerCase());
   if (!log) throw new Error('no JobCreated event in that transaction');
-  const [amount, requiredMeasurement, modelHash, inputHash] = ethers.AbiCoder.defaultAbiCoder().decode(
-    ['uint256', 'bytes32', 'bytes32', 'bytes32'], log.data
+  const [amount, requiredMeasurement, modelHash, inputHash, envelopeHash, settleBy] = ethers.AbiCoder.defaultAbiCoder().decode(
+    ['uint256', 'bytes32', 'bytes32', 'bytes32', 'bytes32', 'uint64'], log.data
   );
   return {
     jobId: log.topics[1],
@@ -404,6 +421,8 @@ function decodeJob(receipt: ethers.TransactionReceipt) {
     requiredMeasurement: requiredMeasurement as string,
     modelHash: modelHash as string,
     inputHash: inputHash as string,
+    envelopeHash: envelopeHash as string,
+    settleBy: settleBy as bigint,
   };
 }
 

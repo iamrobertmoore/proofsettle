@@ -501,6 +501,9 @@ async function watch(txHash) {
   const jobId = log.topics[1];
   state.job = { ...(state.job || {}), jobId, block };
   journey?.funded(block);
+  // Orders made before timer persistence, or opened on another device, use the
+  // public payment block time. A saved submission time takes precedence.
+  if(journey)try{const sourceBlock=await rpc(SEP_RPC,'eth_getBlockByNumber',[receipt.blockNumber,false]);journey.fundedAt(Number(sourceBlock?.timestamp));}catch{}
   setLi(mined, 'ok', `Paid on Sepolia, block ${block.toLocaleString('en-GB')}`, `Job <span class="mono">${jobId}</span>`);
 
   // The oracle: read the attested height straight off the ChainInfo precompile.
@@ -568,7 +571,7 @@ async function followPayout(jobId,sourceBlock,words,checks) {
         const out=withdrawals.find(x=>BigInt(x.data)>=expectedProvider && (Number(x.blockNumber)>Number(fin.blockNumber)||Number(x.transactionIndex)>=Number(fin.transactionIndex)));
         if(out){
           const receipt=await rpc(SEP_RPC,'eth_getTransactionReceipt',[out.transactionHash]);
-          if(receipt?.status==='0x1'){setLi(line,'ok','Original Sepolia ETH withdrawn to the provider',`The finalized split matches Creditcoin. <a href="${EXPLORER_SEP}/tx/${out.transactionHash}">Inspect the actual withdrawal</a>.`);journey?.paid(out.transactionHash);return;}
+          if(receipt?.status==='0x1'){setLi(line,'ok','Original Sepolia ETH withdrawn to the provider',`The finalized split matches Creditcoin. <a href="${EXPLORER_SEP}/tx/${out.transactionHash}">Inspect the actual withdrawal</a>.`);let paidAt;try{paidAt=Number((await rpc(SEP_RPC,'eth_getBlockByNumber',[receipt.blockNumber||out.blockNumber,false]))?.timestamp);}catch{}journey?.paid(out.transactionHash,paidAt);return;}
         }
       }
     }catch(e){setLi(line,'wait','Payout readback pending',e.message);}
@@ -624,7 +627,8 @@ async function findRefusal(jobId) {
     let reason = 'The settlement transaction reverted; its reason could not be recovered.';
     try { await rpc(CC_RPC, 'eth_call', [{ to: tx.to, from: tx.from, data: tx.input }, '0x' + (Number(tx.blockNumber) - 1).toString(16)]); }
     catch (e) { const m = (String(e.data ?? '') + ' ' + String(e.message)).match(/0x[0-9a-f]{8,}/i); if (m) reason = decodeRevert(m[0]) || reason; }
-    return { hash: tx.hash, block: Number(tx.blockNumber), reason };
+    let timestamp;try{timestamp=Number((await rpc(CC_RPC,'eth_getBlockByNumber',[tx.blockNumber,false]))?.timestamp);}catch{}
+    return { hash: tx.hash, block: Number(tx.blockNumber), reason, timestamp };
   };
   try {
     const j = await (await fetch(`${EXPLORER_CC}/api/v2/addresses/${d.settlement}/transactions?filter=to`)).json();

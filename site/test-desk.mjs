@@ -99,6 +99,7 @@ async function mockRpc(path, body) {
       const job = chain.jobs.get(h); if (!job) return null;
       return { status: '0x1', blockNumber: '0x' + job.block.toString(16), transactionHash: h, logs: [{ address: deployments.sourceEscrow, topics: [TOPIC_CREATED, job.jobId, w(job.payer), w(PROVIDER)], data: '0x' }] };
     }
+    if(method==='eth_getBlockByNumber'){const n=Number(params[0]);const j=[...chain.jobs.values()].find(j=>n>=j.block&&n<=j.block+2);return j?{timestamp:'0x'+(j.blockTime+(n-j.block)*12).toString(16)}:null;}
     if(method==='eth_getLogs') {
       const [topic,jobId]=p0.topics||[];
       if(topic===TOPIC_FINALIZED){const j=[...chain.jobs.values()].find(j=>j.jobId===jobId&&j.settled?.outcome===1);return j?[{blockNumber:'0x'+(j.block+1).toString(16),transactionIndex:'0x1',data:'0x'+w((j.splitMismatch?1n:10n**15n).toString(16))+w('0')}]:[];}
@@ -222,7 +223,7 @@ async function mineAndSettle(index, { enclaveRejects = false, refuse = false } =
   const decoded = { provider: '0x' + args.slice(24, 64), requiredMeasurement: '0x' + args.slice(64, 128), modelHash: '0x' + args.slice(128, 192), inputHash: '0x' + args.slice(192, 256) };
   const envelope = fromTrailer(Buffer.from(data.slice(2), 'hex'));
   const jobId = ethers.keccak256(ethers.concat([txHash, decoded.inputHash]));
-  const job = { txHash, jobId, block: 7_000_000 + index, payer: ACCOUNT, ...decoded, envelope };
+  const job = { txHash, jobId, blockTime:Math.floor(Date.now()/1000), block: 7_000_000 + index, payer: ACCOUNT, ...decoded, envelope };
   chain.jobs.set(txHash, job);
   chain.attestedHeight = job.block + 10;
 
@@ -299,23 +300,38 @@ const resultText = await page.$eval('#result', (e) => e.textContent);
 check(resultText.includes(String(expected.probability)), 'and so is the probability', String(expected.probability));
 check(consoleErrors.length === 0, 'still no console errors', consoleErrors.slice(0, 2).join(' | '));
 check(!await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'a finalized split without withdrawal is not shown as provider paid');
+const originalStart = await page.evaluate(h=>JSON.parse(localStorage.getItem('proofsettle.clock.'+h)).started,job1.txHash);
+const beforeRefresh = await page.$eval('#order-elapsed',e=>e.textContent);
+// Restore the test-only RPC overrides removed by the payment URL update.
+await page.goto(`${PAGE}&tx=${job1.txHash}`,{waitUntil:'domcontentloaded'});
+await waitText('#settle-checks li', /hashes to the result/);
+const resumedStart = await page.evaluate(h=>JSON.parse(localStorage.getItem('proofsettle.clock.'+h)).started,job1.txHash);
+const elapsedSeconds = s=>{const m=s.match(/(\d+)m (\d+)s/);return m?Number(m[1])*60+Number(m[2]):-1;};
+check(resumedStart===originalStart && elapsedSeconds(await page.$eval('#order-elapsed',e=>e.textContent))>=elapsedSeconds(beforeRefresh), 'refreshing a pending order preserves its start time and elapsed duration');
 job1.withdrawn=true;job1.payoutHash='0x'+'ab'.repeat(32);job1.splitMismatch=true;
 await page.waitForTimeout(800);
 check(!await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'a withdrawal with a mismatched split is not shown as a completed order');
 job1.splitMismatch=false;
 await waitText('#order-headline',/Order complete/);
 check(await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'matching finalization plus actual ETH withdrawal completes the order');
-check((await page.evaluate(()=>window.__sent)).length===1,'tracking completion never submits a second payment');
+check(Number(await page.evaluate(()=>localStorage.getItem('__txn')))===1,'tracking completion never submits a second payment');
 // DESK_SHOT=path captures the settled page, for the deck and the video.
 if (process.env.DESK_SHOT) { await page.waitForTimeout(600); await page.screenshot({ path: process.env.DESK_SHOT, fullPage: true }); }
 
 // ================================================================ scenario 2: reload, the answer comes back from the saved key
 console.log('\n--- scenario 2: the same job after a reload ---');
+const completedDuration=await page.$eval('#order-elapsed',e=>e.textContent);
 blockscoutLogs = false;  // force the node road for this one
 await page.goto(`${PAGE}&tx=${job1.txHash}`, { waitUntil: 'domcontentloaded' });
 await waitText('#settle-checks li', /hashes to the result/);
 const decision2 = await page.$eval('#result .decision', (e) => e.textContent.trim());
 check(decision2 === expected.decision, 'the answer is recovered with the key saved at payment time', decision2);
+await waitText('#order-headline', /Order complete/);
+check((await page.$eval('#order-elapsed',e=>e.textContent))===completedDuration && /total/.test(completedDuration), 'refreshing a completed order preserves its final duration');
+await page.evaluate(h=>localStorage.removeItem('proofsettle.clock.'+h),job1.txHash);
+await page.reload({waitUntil:'domcontentloaded'});
+await waitText('#order-headline', /Order complete/);
+check((await page.$eval('#order-elapsed',e=>e.textContent))==='0m 24s total', 'an older order without a saved clock uses payment and payout block timestamps');
 blockscoutLogs = true;
 
 // ================================================================ scenario 3: refused on chain by name

@@ -4,7 +4,7 @@
 
 [Verify a real run](https://proofsettle.pages.dev/#evidence) · [Open the synthetic answer](https://proofsettle.pages.dev/desk.html?demo=1) · [Buyer desk](https://proofsettle.pages.dev/desk.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf) · [DoraHacks](https://dorahacks.io/buidl/48538)
 
-Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet implementation, MIT licensed. No customer traction or production security audit claimed.
+Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet implementation, MIT licensed.
 
 ## Start here: two minutes, no wallet
 
@@ -21,6 +21,12 @@ A small lender needs a model's decision but cannot disclose the applicant's reco
 The demo uses eight synthetic financial-behaviour features and a small deterministic logistic model. It demonstrates the settlement protocol, **not validated underwriting**. It requires no GPU. The longer-term use case is externally supplied private computation where the buyer needs both payment and execution guarantees. See [the model card](MODEL_CARD.md).
 
 A successfully computed `decline` still pays the provider. Applicant decisions are private model outputs; `Accepted`, `Rejected` and `Partial` in the contract describe the **compute service**, not applicant eligibility.
+
+## Architecture
+
+![ProofSettle architecture: the buyer pays a Sepolia escrow; an Attestcoin payment proof and a measured enclave signature meet at Creditcoin; a trusted relayer returns the original ETH.](docs/architecture.svg)
+
+**Two proofs meet at Creditcoin.** The worker submits the payment proof and enclave signature together; the contract enforces the buyer’s policy and the exact sealed delivery. The buyer opens the answer locally. The separate ETH return step uses a fixed trusted relayer.
 
 ## How the protocol works
 
@@ -56,6 +62,8 @@ The return key is inside the encrypted envelope. Swapping it changes `envelopeHa
 The trailer is `payload || uint32_be(length) || "PSE1"`. Source and destination contracts hash the actual trailer payload. The normal Solidity arguments still decode. The accepted response is encrypted; rejected requests carry a public, non-sensitive error reason.
 
 ## Trust and limits
+
+This public testnet prototype has not undergone an independent security audit. Production readiness requires the review and recovery work below.
 
 | Component | What is trusted or established |
 |---|---|
@@ -125,6 +133,6 @@ Ten enclave integration tests run the real server outside confidential hardware 
 
 ## Next: validate a narrow pilot
 
-The first target is one lender and one model provider, using synthetic data. Customer interviews and a design partner are next steps, not current traction. Measure successful delivery rate, proof latency, total cost and recovery behaviour. Validate a per-settlement service/integration fee before choosing pricing. Independent review and lifecycle/recovery work precede real borrower data or a production deployment.
+The first target is one lender and one model provider, using synthetic data. The next milestone is customer interviews and a design partner. Measure successful delivery rate, proof latency, total cost and recovery behaviour. Validate a per-settlement service/integration fee before choosing pricing. Independent review and lifecycle/recovery work precede real borrower data or a production deployment.
 
-The current proof is a working protocol and inspectable execution, not a claim that a market has already been won.
+The deployed protocol and reproducible evidence provide a concrete starting point for that pilot.

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1152" height="438" viewBox="0 0 1152 438" role="img" aria-labelledby="title desc">
+  <title id="title">ProofSettle architecture: two proofs authorize settlement</title>
+  <desc id="desc">The buyer encrypts the input and pays a Sepolia escrow with their policy. A worker carries the sealed input to Google Confidential Space and submits an Attestcoin source proof and enclave signature to Creditcoin. Creditcoin checks both, records the sealed answer and authorizes a split. A fixed trusted return relayer finalizes the original Sepolia ETH payment to the provider or buyer. The buyer decrypts the answer locally. A registrar binds the measured enclave to its signing key.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#72efb7"/></marker></defs>
+  <style>text{font-family:Inter,Arial,sans-serif;fill:#edf2f5}.title{font-size:22px;font-weight:600}.detail{font-size:17px;fill:#acc1cc}.label{font-size:17px;fill:#72efb7}.box{fill:#121c21;stroke:#40565e;stroke-width:1.5}.edge{fill:none;stroke:#72efb7;stroke-width:2;marker-end:url(#arrow)}</style>
+  <rect width="1152" height="438" rx="10" fill="#0c1012"/>
+  <rect class="box" x="18" y="116" width="220" height="136" rx="7"/>
+  <text class="title" x="36" y="151">Buyer browser</text><text class="detail" x="36" y="182">Choose build + model</text><text class="detail" x="36" y="207">Seal input; pay ETH</text><text class="detail" x="36" y="232">Keep answer key local</text>
+  <rect class="box" x="327" y="16" width="322" height="113" rx="7"/>
+  <text class="title" x="347" y="49">Sepolia escrow</text><text class="detail" x="347" y="78">ETH + buyer policy</text><text class="detail" x="347" y="104">Sealed input + commitments</text>
+  <path class="edge" d="M 238 149 H 279 V 73 H 327"/>
+  <text class="label" x="347" y="163">Worker carries sealed input</text><path class="edge" d="M 488 173 V 201"/>
+  <path d="M 488 129 V 141" stroke="#72efb7" stroke-width="2"/>
+  <rect class="box" x="327" y="204" width="322" height="126" rx="7"/>
+  <text class="title" x="347" y="236">Confidential Space TEE</text><text class="detail" x="347" y="264">Run model; seal answer</text><text class="detail" x="347" y="290">Sign request + delivery</text><text class="detail" x="347" y="314">Registrar binds build to key</text>
+  <path class="edge" d="M 649 72 H 788 V 132 H 850"/>
+  <text class="label" x="677" y="31">Attestcoin proof</text><text class="detail" x="677" y="54">Payment + policy</text>
+  <path class="edge" d="M 649 273 H 788 V 217 H 850"/>
+  <text class="label" x="672" y="305">Enclave signature</text><text class="detail" x="672" y="329">+ sealed answer</text>
+  <rect x="853" y="90" width="281" height="168" rx="7" fill="#183128" stroke="#72efb7" stroke-width="1.5"/>
+  <text class="title" x="873" y="124">Creditcoin settlement</text><text class="detail" x="873" y="155">Verify both proofs</text><text class="detail" x="873" y="181">Match policy + request</text><text class="detail" x="873" y="207">Bind sealed delivery</text><text class="label" x="873" y="236">Authorize payment split</text>
+  <text class="detail" x="18" y="303">Buyer reads the settlement</text><text class="detail" x="18" y="328">and opens the answer locally.</text>
+  <path class="edge" d="M 994 258 V 359"/>
+  <rect x="18" y="364" width="1116" height="57" rx="7" fill="#222019" stroke="#8e7951"/>
+  <text x="39" y="399" font-size="19">Original ETH return: Creditcoin split → <tspan fill="#f2cd8d" font-weight="600">fixed trusted relayer</tspan> → Sepolia escrow → provider / buyer</text>
+</svg>

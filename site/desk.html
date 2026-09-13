@@ -650,13 +650,16 @@ async function findRefusal(jobId) {
 function decodeRevert(data) {
   const sel = data.slice(0, 10); const words = data.slice(10).match(/.{64}/g) || [];
   if (sel === selector('EnclaveNotAccepted(bytes32,address)') && words.length >= 2) return `EnclaveNotAccepted(required ${'0x' + words[0]}, signed by 0x${words[1].slice(24)})`;
+  if (sel === selector('RequestMismatch(bytes32,bytes32)') && words.length >= 2) return 'RequestMismatch: the enclave result did not match the encrypted input committed in your payment';
   return null;
 }
 function showRefusal(el, r) {
   journey?.refused(r);
   setLi(el, 'no', `Refused on Creditcoin, block ${r.block.toLocaleString('en-GB')}`, `<a href="${EXPLORER_CC}/tx/${r.hash}">${r.hash}</a><br>${r.reason}`);
   $('#after').hidden = false;
-  $('#after').innerHTML = `<strong>That is the rail working.</strong> You demanded a build the live enclave is not, so the contract read your requirement out of the proven payment and refused the enclave's signature by name. Nothing was released. Your payment stays in the Sepolia escrow and is reclaimable after the refund delay.`;
+  $('#after').innerHTML = r.reason.startsWith('EnclaveNotAccepted')
+    ? `<strong>That is the rail working.</strong> You demanded a build the live enclave is not, so the contract read your requirement out of the proven payment and refused the enclave's signature by name. Nothing was released. Your payment stays in the Sepolia escrow and is reclaimable after the refund delay.`
+    : `<strong>This settlement attempt failed.</strong> No payment was released by this attempt. This is not evidence that you chose the wrong build. Your order can still settle if the worker corrects the failure before the settlement deadline; reload this order to check for a successful retry. Otherwise, your payment remains in Sepolia escrow for the timeout refund.`;
 }
 
 function showResult(result, outcome, jobId) {

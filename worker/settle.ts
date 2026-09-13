@@ -33,6 +33,7 @@ import settlementAbi from '../out/ComputeSettlement.sol/ComputeSettlement.json' 
 import { signResult, Outcome } from './enclave-client.js';
 import { releasePayment } from './return.js';
 import { PatientBlockProvider } from './block-provider.js';
+import { paymentEnvelope } from './payment-envelope.mjs';
 
 const need = (k: string): string => {
   const v = process.env[k];
@@ -183,10 +184,10 @@ async function settleOne(txHash: string, ctx: Ctx) {
   if (job.settleBy <= BigInt(Math.floor(Date.now() / 1000))) {
     console.log('  settlement window expired; the buyer retains the source timeout refund'); return;
   }
-  // The buyer's sealed input is whatever follows the ABI-encoded arguments in the payment's
-  // calldata. The worker carries it to the enclave without being able to read it.
-  const { fromTrailer, withTrailer } = await envelopeMod;
-  const sealedInput = fromTrailer(Buffer.from(tx.data.slice(2), 'hex'));
+  // Match the escrow's input commitment even when a wallet wraps the inner call.
+  // The worker carries only ciphertext and cannot read it.
+  const { withTrailer } = await envelopeMod;
+  const sealedInput = paymentEnvelope(Buffer.from(tx.data.slice(2), 'hex'), job.envelopeHash);
   const ciphertext = sealedInput ? '0x' + sealedInput.toString('hex') : undefined;
   console.log(ciphertext ? `  sealed input ${sealedInput!.length} bytes, riding in the payment` : '  no sealed input in the payment');
 

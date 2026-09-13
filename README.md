@@ -22,6 +22,8 @@ A funded order protects the provider from an unfunded promise. Binding the reque
 
 The [evidence manifest](site/demo.json) and [deployment addresses](site/deployments.json) identify the public reference records. The browser checks public chain data locally. Fresh refusals can be found directly in Creditcoin blocks when the explorer index lags. Verification does not create a new payment or run the model again.
 
+The buyer flow supports a wallet wrapping the escrow call inside its own transaction. The worker finds the encrypted input by matching the escrow event's envelope hash, including when the inner call has trailing wallet data. If a committed input cannot be recovered, the worker keeps the order retryable instead of submitting a mismatched result. Keep the original order link and browser profile when resuming; no second payment is needed to check an order.
+
 ## The customer and the product
 
 A small lender needs a model's decision but cannot disclose the applicant's record to an unknown compute provider. ProofSettle seals that record to a measured workload and makes payment conditional on verifiable service completion.

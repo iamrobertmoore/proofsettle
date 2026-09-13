@@ -13,12 +13,38 @@ import assert from 'node:assert/strict';
 import { ethers } from 'ethers';
 import { readFileSync } from 'node:fs';
 import { withTrailer, fromTrailer } from '../../enclave/envelope.mjs';
+import { paymentEnvelope } from '../payment-envelope.mjs';
 
 const escrowAbi = JSON.parse(readFileSync(new URL('../../out/ComputeJobEscrow.sol/ComputeJobEscrow.json', import.meta.url), 'utf8')).abi;
 const settlementAbi = JSON.parse(readFileSync(new URL('../../out/ComputeSettlement.sol/ComputeSettlement.json', import.meta.url), 'utf8')).abi;
 
 const envelope = Buffer.from('01' + 'ab'.repeat(32) + 'cd'.repeat(12) + 'ef'.repeat(90), 'hex');
 const hex = (b) => '0x' + Buffer.from(b).toString('hex');
+
+test('payment extraction matches the escrow commitment for direct and wallet-wrapped calls', () => {
+  const iface = new ethers.Interface(escrowAbi);
+  const call = iface.encodeFunctionData('createJob', ['0x'+'11'.repeat(20), '0x'+'22'.repeat(32), '0x'+'33'.repeat(32), '0x'+'44'.repeat(32)]) + withTrailer(envelope).toString('hex');
+  const direct = Buffer.from(call.slice(2), 'hex');
+  const wrapper = new ethers.Interface(['function execute(address target,uint256 value,bytes data)']);
+  const wrapped = Buffer.from(wrapper.encodeFunctionData('execute', ['0x'+'55'.repeat(20), 1000000000000000n, call]).slice(2), 'hex');
+  assert.equal(fromTrailer(wrapped), null, 'ABI padding reproduces the wallet failure');
+  for (const data of [direct, wrapped]) assert.deepEqual(paymentEnvelope(data, ethers.keccak256(envelope)), envelope);
+});
+
+test('payment extraction selects only the committed envelope among decoys', () => {
+  const decoy = Buffer.from('unrelated input');
+  const data = Buffer.concat([withTrailer(decoy), withTrailer(envelope), withTrailer(decoy)]);
+  assert.deepEqual(paymentEnvelope(data, ethers.keccak256(envelope)), envelope);
+  assert.throws(() => paymentEnvelope(data, ethers.keccak256('0x1234')), /Committed sealed input not found/);
+});
+
+test('missing, malformed and altered committed input stop before enclave submission', () => {
+  const altered = Buffer.from(envelope); altered[20] ^= 1;
+  for (const data of [Buffer.alloc(0), Buffer.from('PSE1'), Buffer.from('ffffffff50534531', 'hex'), withTrailer(altered)]) {
+    assert.throws(() => paymentEnvelope(data, ethers.keccak256(envelope)), /Committed sealed input not found/);
+  }
+  assert.equal(paymentEnvelope(Buffer.alloc(0), ethers.keccak256('0x')), null, 'no-input commitment is keccak256(empty), matching the escrow');
+});
 
 test('createJob calldata: arguments still decode with the trailer appended, and the trailer gives the envelope back', () => {
   const iface = new ethers.Interface(escrowAbi);

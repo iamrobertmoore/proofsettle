@@ -125,7 +125,7 @@ async function mockRpc(path, body) {
     // The refusal replay: the same calldata against the block before, which reverts by name.
     if (s === sel('settle(uint64,uint64,bytes,bytes,bytes,bytes)') || data.includes('deadbeef')) {
       const job = [...chain.jobs.values()].find((j) => j.refusal && data.includes(j.jobId.slice(2)));
-      if (job) throw { code: 3, message: 'execution reverted', data: sel('EnclaveNotAccepted(bytes32,address)') + w(job.requiredMeasurement) + w(identity.signer) };
+      if (job) throw { code: 3, message: 'execution reverted', data: job.refusal.errorData || sel('EnclaveNotAccepted(bytes32,address)') + w(job.requiredMeasurement) + w(identity.signer) };
     }
     return '0x' + w('0');
   }
@@ -342,6 +342,16 @@ await page.route('**/api/v2/addresses/**/transactions?filter=to', r=>r.fulfill({
 await page.goto(`${PAGE}&tx=${job3.txHash}`,{waitUntil:'domcontentloaded'});
 await waitText('#order-headline',/Order refused/,30000);
 check(/EnclaveNotAccepted/.test((await texts('#settle-checks li')).join(' ')), 'direct block and failed-receipt lookup finds a fresh refusal while the explorer is stale');
+
+// An operational failure must not be presented as an intentional policy demonstration.
+job3.refusal.errorData = sel('RequestMismatch(bytes32,bytes32)') + w('11') + w('22');
+await page.goto(`${PAGE}&tx=${job3.txHash}`, {waitUntil:'domcontentloaded'});
+await waitText('#order-headline', /Settlement transaction refused/, 30000);
+check(/RequestMismatch/.test(await page.$eval('#order-explanation', e=>e.textContent)), 'input mismatch is decoded and shown to the buyer');
+const failureCopy = await page.$eval('#after', e=>e.textContent);
+check(/attempt failed/.test(failureCopy) && /reload this order/.test(failureCopy) && !/rail working|You demanded a build/.test(failureCopy), 'operational failure explains recovery without claiming a deliberate wrong-build refusal');
+check(await page.$eval('#order-next', e=>e.hidden), 'an operational failure does not encourage a duplicate payment');
+delete job3.refusal.errorData;
 
 // ================================================================ scenario 4: the enclave refuses to run
 console.log('\n--- scenario 4: the enclave refuses the job and signs the refusal ---');

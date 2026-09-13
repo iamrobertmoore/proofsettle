@@ -2,27 +2,23 @@
 
 **Private compute. Verifiable payment.** A buyer-controlled settlement rail on Creditcoin: Attestcoin proves a Sepolia payment and its policy; a measured enclave signs the exact request and sealed answer. Both must agree before Creditcoin authorizes settlement.
 
-[Verify a real run](https://proofsettle.pages.dev/#evidence) · [Open the synthetic answer](https://proofsettle.pages.dev/desk.html?demo=1) · [Buyer desk](https://proofsettle.pages.dev/desk.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf) · [DoraHacks](https://dorahacks.io/buidl/48538)
+[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence for judges](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf) · [DoraHacks](https://dorahacks.io/buidl/48538)
 
 Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet implementation, MIT licensed.
 
-## Start here: follow one buyer’s purchase
+## Use it as a buyer
 
-A lender wants a model’s answer without exposing an applicant’s record to an unknown provider. The buyer needs evidence that the delivered computation matches the order; the provider needs a real payment behind it. ProofSettle brings those requirements together.
+1. Open [ProofSettle](https://proofsettle.pages.dev/) and choose **Start a private compute job**. Use a normal browser profile with MetaMask on Sepolia and test ETH for a 0.001 ETH order plus gas.
+2. **Prepare the order.** Choose a synthetic applicant and the build you will accept. The browser checks the published confidential workload’s enrollment evidence before enabling payment.
+3. **Seal and pay.** Review the service, input, build and price, then approve the actual wallet transaction. The encrypted record and your requirements travel inside your Sepolia payment. The answer key stays in this browser profile.
+4. **Track your own delivery.** Stay on the order page. It follows the source payment, Attestcoin attestation, Creditcoin settlement, locally decrypted answer and original ETH withdrawal. Testnet attestation takes several minutes; an existing order can be resumed from its URL without paying again.
+5. **Test the buyer’s requirement.** After a successful purchase, choose **Test a different build** to place a second real order that the live enclave cannot satisfy. Creditcoin should refuse it with `EnclaveNotAccepted`. The test payment remains in escrow until the **30-day timeout refund**; this is not an immediate refund demonstration.
 
-1. **[Verify a real run](https://proofsettle.pages.dev/#evidence).** The five checks tell the story of one completed purchase and a separate wrong-build refusal. Press **Recheck the on-chain evidence** to retrieve the public records again. This is a read-only inspection: it does not run a new model, create a transaction or spend money.
-2. **[Open the example answer](https://proofsettle.pages.dev/desk.html?demo=1).** See what the buyer actually receives. The browser retrieves the encrypted answer from the settlement transaction, decrypts it locally and checks it against the recorded result. This synthetic example publishes a disposable answer key; ordinary buyer sessions keep theirs private.
-3. **[Try the buyer desk](https://proofsettle.pages.dev/desk.html)** to see how a new purchase is created, or use **[detailed verification](https://proofsettle.pages.dev/verify.html#check)** to inspect the enclave’s enrollment evidence and settlement state.
+A funded order protects the provider from an unfunded promise. Binding the request and delivered ciphertext protects the buyer from paying for a substituted request or a missing answer. A computed `decline` still pays for successful service: applicant approval is separate from compute completion. Original ETH return uses a **fixed trusted relayer**, described below.
 
-| Live check | What it establishes | Why the buyer or provider cares |
-|---|---|---|
-| Payment happened | A successful payment to the named Sepolia escrow | The order is backed by funds, rather than a screenshot or promise |
-| Request is bound | Creditcoin’s recorded request matches the source model, input and encrypted-envelope commitments | The delivery matches the order; substituting the input, model or return key fails the contract check |
-| Answer was delivered | The transaction contains the payload committed to by the signed delivery | The buyer gets an encrypted answer they can open, not just a claim that work was done |
-| Original ETH was released | Sepolia finalization matches the Creditcoin split and the provider withdrew ETH | The completed purchase paid the provider; this return step uses a fixed trusted relayer |
-| Wrong build was refused | A separate mined failure reproduces `EnclaveNotAccepted` | The buyer’s build requirement was enforced; that payment remains in escrow until its timeout refund |
+**For judges:** [supporting evidence](https://proofsettle.pages.dev/evidence.html) contains a completed reference run, a deliberately public synthetic answer, independent readbacks and enrollment verification. These are an appendix to the product workflow. The reference answer publishes a disposable key; it is not presented as the result of your new purchase.
 
-The [evidence manifest](site/demo.json) and [deployment addresses](site/deployments.json) identify the records being checked. The browser reads the public chain RPCs and performs the comparisons locally. These checks demonstrate delivery and settlement of a requested computation; they do not establish the model’s predictive quality or remove the trust assumptions below.
+The [evidence manifest](site/demo.json) and [deployment addresses](site/deployments.json) identify the public reference records. The browser checks public chain data locally. Fresh refusals can be found directly in Creditcoin blocks when the explorer index lags. Verification does not create a new payment or run the model again.
 
 ## The customer and the product
 

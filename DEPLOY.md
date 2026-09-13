@@ -79,4 +79,4 @@ Update `deck/facts.json` from actual verified evidence before rendering. Renderi
 
 ## Release checks
 
-Run `npm run judge:verify`, check CI, verify explorer source, inspect the homepage's five live checks, open the synthetic answer, test the buyer desk, and check mobile layout. Confirm the worker service is active and reading the new deployment. Archive superseded evidence explicitly; never mix a new enclave identity with an old example in the default walkthrough.
+Run `npm run judge:verify`, check CI, verify explorer source, follow the homepage into a fresh buyer order, inspect the judging appendix’s five live checks, open its synthetic reference answer, and check mobile layout. Confirm the worker service is active and reading the new deployment. Archive superseded evidence explicitly; never mix a new enclave identity with an old example in the default walkthrough.

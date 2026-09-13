@@ -92,7 +92,7 @@
 <link rel="stylesheet" href="experience.css"></head>
 <body class="workspace-page">
 <div class="sky" aria-hidden="true"></div>
-<header class="ps-nav"><a class="ps-brand" href="index.html" aria-label="ProofSettle overview"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M4 10 18 2 32 10v16L18 34 4 26Z M4 10l14 8 14-8 M18 18v16"/><path class="glow" d="m10 18 5 5 11-12"/></svg>ProofSettle</a><nav aria-label="Main"><a href="index.html">Overview</a><a href="desk.html?demo=1">Example answer</a><a href="desk.html">Buyer desk</a><a href="verify.html">Verification</a><a href="ProofSettle-deck.pdf" target="_blank" rel="noopener">Deck ↗</a><a href="https://github.com/iamrobertmoore/proofsettle" target="_blank" rel="noopener">GitHub ↗</a></nav></header>
+<header class="ps-nav"><a class="ps-brand" href="index.html" aria-label="ProofSettle overview"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M4 10 18 2 32 10v16L18 34 4 26Z M4 10l14 8 14-8 M18 18v16"/><path class="glow" d="m10 18 5 5 11-12"/></svg>ProofSettle</a><nav aria-label="Main"><a href="index.html#how">How it works</a><a href="evidence.html">For judges</a><a class="nav-start" href="desk.html">Start a job →</a></nav></header>
 <div class="wrap">
 
 
@@ -165,15 +165,17 @@
 </div>
 
 <script type="module">
+import {createJourney} from "./purchase.js";
 // ---------------------------------------------------------------- configuration
 const q = new URLSearchParams(location.search);
+const journey = q.get('demo') === '1' ? null : createJourney();
 if (q.get('demo') === '1') {
   document.body.classList.add('example-page');
   document.title='ProofSettle — Example answer';
   document.querySelector('.hero .eyebrow').textContent='EXAMPLE ANSWER · COMPLETED TESTNET PURCHASE';
   document.querySelector('h1').textContent='The buyer gets an answer. The record stays sealed.';
   document.querySelector('.hero .lede').textContent='This answer comes from a real, completed settlement. Your browser retrieves the encrypted result and opens it locally, just as the buyer would.';
-  document.querySelector('.journey-note').innerHTML='<strong>A public example of a private workflow.</strong> We use synthetic data and deliberately publish this example’s disposable answer key. In a normal purchase, only the buyer’s browser keeps that key. <a href="index.html#evidence">← Back to the five evidence checks</a>';
+  document.querySelector('.journey-note').innerHTML='<strong>A public example of a private workflow.</strong> We use synthetic data and deliberately publish this example’s disposable answer key. In a normal purchase, only the buyer’s browser keeps that key. <a href="evidence.html#evidence">← Back to the five evidence checks</a>';
   document.querySelector('#s5 .snum').textContent='THE DELIVERED ANSWER';
   document.querySelector('#s5 h2').textContent='Open the result, directly from settlement';
   document.querySelector('#s5 > p:not(.snum):not(.note)').textContent='The browser checks the recorded result and decrypts the answer below. This demonstrates private delivery of the requested computation, not the accuracy of a lending model.';
@@ -323,6 +325,7 @@ async function loadProvider() {
   // The attestation: Google's word, checked here.
   await checkAttestation(checks, en);
   state.providerVerified = !checks.querySelector(".mark.no") && checks.querySelectorAll(".mark.ok").length >= 5;
+  journey?.identity(state.providerVerified);
   renderPay();
 }
 
@@ -365,7 +368,7 @@ const FEATURES = [
 ];
 const PRESETS = [
   { name: 'Established trader', note: 'Two years of records, pays suppliers on time, two loans repaid.', r: { months_of_history: 24, inflows_per_month: 30, inflow_regularity: 0.95, avg_monthly_inflow_usd: 900, balance_volatility: 0.2, supplier_on_time_ratio: 0.95, prior_loans_repaid: 2, prior_loans_defaulted: 0 } },
-  { name: 'Thin file, steady', note: 'Six months of history, no loans yet, regular inflows. The applicant Amara is built for.', r: { months_of_history: 6, inflows_per_month: 14, inflow_regularity: 0.75, avg_monthly_inflow_usd: 300, balance_volatility: 0.4, supplier_on_time_ratio: 0.8, prior_loans_repaid: 0, prior_loans_defaulted: 0 } },
+  { name: 'Thin file, steady', note: 'Six months of history, no loans yet, regular inflows. A synthetic example with a limited credit history.', r: { months_of_history: 6, inflows_per_month: 14, inflow_regularity: 0.75, avg_monthly_inflow_usd: 300, balance_volatility: 0.4, supplier_on_time_ratio: 0.8, prior_loans_repaid: 0, prior_loans_defaulted: 0 } },
   { name: 'Erratic, one default', note: 'Irregular inflows, late to suppliers, defaulted before.', r: { months_of_history: 10, inflows_per_month: 8, inflow_regularity: 0.4, avg_monthly_inflow_usd: 200, balance_volatility: 0.8, supplier_on_time_ratio: 0.3, prior_loans_repaid: 0, prior_loans_defaulted: 2 } },
 ];
 function renderApplicant() {
@@ -392,9 +395,9 @@ function readRecord() {
 // ---------------------------------------------------------------- 03 build
 function renderBuild() {
   const en = state.enclave; const choices = [
-    { v: en.measurement, label: 'The attested build', small: `${en.build}. Registered key for this measured build; Google enrollment evidence is checked below.` },
+    { v: en.measurement, label: 'Current attested build — expected to deliver' , small: `${en.build}. Registered key for this measured build; Google enrollment evidence is checked before payment.` },
   ];
-  if (en.previousMeasurement) choices.push({ v: en.previousMeasurement, label: 'An earlier build', small: `${en.previousBuild || 'an earlier image'}. This rejection test locks test ETH until the 30-day refund timeout. The live enclave cannot satisfy this older measurement.` });
+  if (en.previousMeasurement) choices.push({ v: en.previousMeasurement, label: 'Earlier build — intentional refusal test', small: `${en.previousBuild || 'an earlier image'}. This rejection test locks test ETH until the 30-day refund timeout. The live enclave cannot satisfy this older measurement.` });
   choices.push({ v: 'custom', label: 'A measurement you type', small: 'Any 32-byte value. An unavailable build is refused; test ETH remains locked until the 30-day refund timeout.' });
   $('#build-choice').innerHTML = choices.map((c, i) => `<label><input type="radio" name="build" value="${c.v}" ${i === 0 ? 'checked' : ''}><span>${c.label}<small>${c.small}</small></span></label>`).join('')
     + `<div id="custom-wrap" hidden><label for="custom-measurement">Measurement</label><input type="text" id="custom-measurement" placeholder="0x… 32 bytes"></div>`;
@@ -404,7 +407,9 @@ function renderBuild() {
     state.requiredMeasurement = v === 'custom' ? ($('#custom-measurement').value.trim() || null) : v;
     renderPay();
   };
-  $('#build-choice').addEventListener('change', update); $('#build-choice').addEventListener('input', update); update();
+  $('#build-choice').addEventListener('change', update); $('#build-choice').addEventListener('input', update);
+  if(q.get('mode')==='wrong-build' && en.previousMeasurement)document.querySelector(`input[name=build][value="${en.previousMeasurement}"]`).checked=true;
+  update();
 }
 
 // ---------------------------------------------------------------- 04 pay
@@ -417,12 +422,13 @@ function renderPay() {
     ['Required build', state.requiredMeasurement || '(choose or type one)', true],
     ['Model', en.modelHash, true],
     ['Commitment', state.inputHash, true],
-    ['Sealed record', 'appended after the arguments, encrypted to the enclave key above, plus an 8 byte trailer'],
+    ['Sealed record', 'Encrypted in your browser and carried inside the payment'],
     ['Value', '0.001 Sepolia ETH'],
   ]);
   const sealable = /^0x[0-9a-f]{64}$/i.test(en.encryptionPublicKey || '') && /^0x[0-9a-f]{64}$/i.test(en.modelHash || '');
   const ready = !!(state.providerVerified && sealable && state.account && state.requiredMeasurement && /^0x[0-9a-fA-F]{64}$/.test(state.requiredMeasurement) && (en.provider || d.provider));
   $('#pay').disabled = !ready;
+  journey?.review(state);
   if (!sealable && !$('#pay-checks').querySelector('.unsealable')) {
     const el = li($('#pay-checks'), 'no', 'This build publishes no encryption key, so there is nothing to seal the record to', 'The desk needs an enclave build that generates an X25519 key inside the attested image. The verifier page still works against this build.');
     el.classList.add('unsealable');
@@ -451,6 +457,8 @@ async function pay() {
   const provider = en.provider || d.provider;
   if (!state.providerVerified) return li(checks, 'no', 'Provider verification must pass before payment');
   $('#pay').disabled = true;
+  let submittedHash=null;
+  journey?.approving();
   try {
     // Seal the record to the enclave. The one-time key is kept, because the answer comes back to it.
     const plaintext = enc.encode(JSON.stringify(state.record));
@@ -459,6 +467,8 @@ async function pay() {
     li(checks, 'ok', `Record sealed, ${envelope.length} bytes, to the enclave's key`, `One-time key ${short(hex(ephemeralRaw), 12)} kept in this browser for the answer.`);
 
     const txHash = await window.ethereum.request({ method: 'eth_sendTransaction', params: [{ from: state.account, to: d.sourceEscrow, value: '0x' + PRICE_WEI.toString(16), data }] });
+    submittedHash=txHash;
+    journey?.sent(txHash);
     state.job = { txHash, ephemeral, ephemeralRaw, inputHash: state.inputHash, requiredMeasurement: state.requiredMeasurement };
     // Survive a reload: the private key is what turns the sealed answer back into a decision.
     try { localStorage.setItem('proofsettle.job.' + txHash, JSON.stringify({ k: hex(new Uint8Array(await crypto.subtle.exportKey('pkcs8', ephemeral.privateKey))), raw: hex(ephemeralRaw), inputHash: state.inputHash, requiredMeasurement: state.requiredMeasurement })); } catch {}
@@ -466,38 +476,40 @@ async function pay() {
     history.replaceState(null, '', '?tx=' + txHash);
     await watch(txHash);
   } catch (e) {
-    li(checks, 'no', 'Payment did not go through', e.message);
-    $('#pay').disabled = false;
+    if(submittedHash){li(checks,'no','Payment sent; tracking interrupted',e.message);journey?.failed(e.message);}
+    else {li(checks, 'no', 'Payment did not go through', e.message);journey?.cancelled();$('#pay').disabled=false;}
   }
 }
 
 // ---------------------------------------------------------------- 05 settlement
 async function watch(txHash) {
   const checks = $('#settle-checks'); checks.innerHTML = '';
+  $('#result').hidden=true;$('#after').hidden=true;
   const timeout = Date.now() + 25*60*1000;
   if (state.publicDemo) li(checks,'info','Public synthetic example','Its disposable answer key is deliberately published. Ordinary buyer sessions keep that key private.');
   const d = state.deployments;
-  if (!state.publicDemo) document.querySelector('#s5').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!state.publicDemo && !journey) document.querySelector('#s5').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const mined = li(checks, 'wait', 'Waiting for Sepolia to mine the payment');
   let receipt;
-  for (;;) { if(Date.now()>timeout) return li(checks,'info','Still waiting for the payment','Reload this link to resume.'); receipt = await rpc(SEP_RPC, 'eth_getTransactionReceipt', [txHash]); if (receipt) break; await sleep(Math.min(POLL, 6000)); }
-  if (receipt.status !== '0x1') return setLi(mined, 'no', 'The payment transaction reverted on Sepolia');
+  for (;;) { if(Date.now()>timeout) {journey?.failed('The payment has not been confirmed within 25 minutes.');return li(checks,'info','Still waiting for the payment','Reload this link to resume.');} receipt = await rpc(SEP_RPC, 'eth_getTransactionReceipt', [txHash]); if (receipt) break; await sleep(Math.min(POLL, 6000)); }
+  if (receipt.status !== '0x1') {journey?.failed('The Sepolia payment reverted; no order was funded.');return setLi(mined, 'no', 'The payment transaction reverted on Sepolia');}
   const block = Number(receipt.blockNumber);
   const topic = keccakHex(enc.encode('JobCreated(bytes32,address,address,uint256,bytes32,bytes32,bytes32,bytes32,uint64)'));
   const log = (receipt.logs || []).find((l) => l.topics[0] === topic && l.address.toLowerCase() === d.sourceEscrow.toLowerCase());
-  if (!log) return setLi(mined, 'no', 'No JobCreated event in that transaction');
+  if (!log) {journey?.failed('This transaction contains no order from the published escrow.');return setLi(mined, 'no', 'No JobCreated event in that transaction');}
   const jobId = log.topics[1];
   state.job = { ...(state.job || {}), jobId, block };
+  journey?.funded(block);
   setLi(mined, 'ok', `Paid on Sepolia, block ${block.toLocaleString('en-GB')}`, `Job <span class="mono">${jobId}</span>`);
 
   // The oracle: read the attested height straight off the ChainInfo precompile.
   const att = li(checks, 'wait', 'Waiting for the Attestcoin oracle to attest that block');
   for (;;) {
-    if(Date.now()>timeout) return li(checks,'info','Oracle wait exceeded 25 minutes','Reload this link to resume. Your payment remains in escrow.');
+    if(Date.now()>timeout) {journey?.failed('Attestcoin has not attested the payment block within 25 minutes. Your payment remains in escrow.');return li(checks,'info','Oracle wait exceeded 25 minutes','Reload this link to resume. Your payment remains in escrow.');}
     let height = 0;
     try { const r = await ccCall(CHAIN_INFO, selector('get_latest_attestation_height_and_hash(uint64)') + pad(CHAIN_KEY.toString(16))); height = Number(BigInt('0x' + r.slice(2, 66))); } catch {}
-    if (height >= block) { setLi(att, 'ok', `Attested on Creditcoin, height ${height.toLocaleString('en-GB')}`, 'Read from the ChainInfo precompile at 0x…0fd3, in your browser.'); break; }
+    if (height >= block) { setLi(att, 'ok', `Attested on Creditcoin, height ${height.toLocaleString('en-GB')}`, 'Read from the ChainInfo precompile at 0x…0fd3, in your browser.'); journey?.proven(); break; }
     setLi(att, 'wait', `Waiting for the Attestcoin oracle: attested height ${height.toLocaleString('en-GB')}, need ${block.toLocaleString('en-GB')}`, `${Math.max(0, block - height)} blocks to go. Batches land every two minutes or so.`);
     await sleep(POLL);
   }
@@ -506,7 +518,7 @@ async function watch(txHash) {
   const set = li(checks, 'wait', "Waiting for the provider's worker to prove the payment, run the job and settle");
   let words;
   for (let i = 0; ; i++) {
-    if(Date.now()>timeout) return li(checks,'info','Still awaiting settlement','Reload this link to resume. Settlement expires after one day; an unfinalized payment can be reclaimed after 30 days.');
+    if(Date.now()>timeout) {journey?.failed('Settlement is still pending. An unfinalized payment can be reclaimed after 30 days.');return li(checks,'info','Still awaiting settlement','Reload this link to resume. Settlement expires after one day; an unfinalized payment can be reclaimed after 30 days.');}
     const raw = await ccCall(d.settlement, selector('settlements(bytes32)') + pad(jobId));
     words = raw.replace(/^0x/, '').match(/.{64}/g) || [];
     if (words.length >= 11 && BigInt('0x' + words[10]) !== 0n) break;
@@ -516,31 +528,55 @@ async function watch(txHash) {
   const outcome = Number(BigInt('0x' + words[8])), enclave = '0x' + words[7].slice(24), resultHash = '0x' + words[6];
   const names = ['Rejected', 'Accepted', 'Partial'];
   const settleTx = await findSettlementTx(jobId);
+  journey?.settled(settleTx?.hash);
   setLi(set, 'ok', `Settled on Creditcoin: ${names[outcome] ?? outcome}`, settleTx ? `<a href="${EXPLORER_CC}/tx/${settleTx.hash}">${settleTx.hash}</a>, signed by enclave <span class="mono">${short(enclave, 10)}</span>` : `Signed by enclave ${short(enclave, 10)}`);
-
-  try {
-    const finalized = await rpc(SEP_RPC, 'eth_call', [{to:d.sourceEscrow,data:selector('finalized(bytes32)')+pad(jobId)},'latest']);
-    li(checks, BigInt(finalized)===1n?'ok':'info', BigInt(finalized)===1n?'Original Sepolia payment released to the recorded split':'Sepolia return payment is pending', 'A fixed, trusted return relayer releases ETH after reading Creditcoin. This return leg is not an Attestcoin proof.');
-  } catch { li(checks,'info','Could not read the Sepolia return payment','The Creditcoin settlement above is verified independently.'); }
 
   // The answer rides in the settlement's calldata. Open it, and check it is the one the chain hashed.
   const rider = settleTx ? fromTrailer(settleTx.input) : null;
-  if (!rider) return li(checks, 'no', 'Could not retrieve the signed delivery', 'Retry the chain lookup; a v2 settlement commits to the exact returned payload.');
+  if (!rider) {journey?.failed('The settlement is recorded, but this browser could not retrieve its signed delivery.');return li(checks, 'no', 'Could not retrieve the signed delivery', 'Retry the chain lookup; a v2 settlement commits to the exact returned payload.');}
   try {
     let result;
     if (rider[0] === 1) {
       const job = await recoverJob(txHash);
-      if (!job) return li(checks, 'info', 'This answer is private to the buyer', 'The decryption key is kept in the paying browser. The payment and settlement remain publicly verifiable. <a href="desk.html?demo=1">Open the deliberately public synthetic example</a> to inspect a real answer.');
+      if (!job) {journey?.failed('This browser profile does not hold the private answer key. Resume in the profile that placed the order.');return li(checks, 'info', 'This answer is private to the buyer', 'The decryption key is kept in the paying browser. The payment and settlement remain publicly verifiable. <a href="desk.html?demo=1">Open the deliberately public synthetic example</a> to inspect a real answer.');}
       result = JSON.parse(dec.decode(await open(job.privateKey, job.raw, rider, aadResult(jobId))));
     } else if (rider[0] === 2) {
       result = JSON.parse(dec.decode(rider.slice(1)));
     } else throw new Error('unknown rider type ' + rider[0]);
     const hashOk = keccakHex(enc.encode(canonical(result))).toLowerCase() === resultHash.toLowerCase();
     li(checks, hashOk ? 'ok' : 'no', hashOk ? 'The answer hashes to the result the chain recorded' : 'The answer does not match the result hash on chain', `keccak256 of the canonical result equals <span class="mono">${short(resultHash, 14)}</span>.`);
-    if (!hashOk) return;
+    if (!hashOk) {journey?.failed('The decrypted answer does not match the recorded result hash.');return;}
     showResult(result, outcome, jobId);
-  } catch (e) { li(checks, 'no', 'Could not open the answer', e.message); }
+    if(journey){ if(result.rejected)journey.declined();else journey.answer(); }
+    if(journey && outcome===1) void followPayout(jobId,block,words,checks).catch(e=>{li(checks,'info','Could not verify the original ETH payout',e.message);journey.payoutPending(true);});
+  } catch (e) { li(checks, 'no', 'Could not open the answer', e.message);journey?.failed('The private answer could not be opened: '+e.message); }
 }
+
+async function followPayout(jobId,sourceBlock,words,checks) {
+  const d=state.deployments, provider='0x'+words[1].slice(24);
+  const expectedProvider=BigInt('0x'+words[4]), expectedPayer=BigInt('0x'+words[5]);
+  const line=li(checks,'wait','Waiting for the original Sepolia ETH payout','Creditcoin authorizes the split. The fixed trusted return relayer finalizes it and withdraws to the recorded recipient.');
+  const deadline=Date.now()+10*60*1000;
+  while(Date.now()<deadline){
+    try {
+      const logs=await rpc(SEP_RPC,'eth_getLogs',[{address:d.sourceEscrow,fromBlock:'0x'+sourceBlock.toString(16),toBlock:'latest',topics:[selectorFull('JobFinalized(bytes32,uint256,uint256)'),jobId]}]);
+      const fin=logs.at(-1);
+      if(fin){
+        const parts=fin.data.slice(2).match(/.{64}/g)||[];
+        if(parts.length<2||BigInt('0x'+parts[0])!==expectedProvider||BigInt('0x'+parts[1])!==expectedPayer)throw Error('Sepolia finalization differs from the Creditcoin payment split');
+        const withdrawals=await rpc(SEP_RPC,'eth_getLogs',[{address:d.sourceEscrow,fromBlock:fin.blockNumber,toBlock:'latest',topics:[selectorFull('PaymentWithdrawn(address,uint256)'),'0x'+pad(provider)]}]);
+        const out=withdrawals.find(x=>BigInt(x.data)>=expectedProvider && (Number(x.blockNumber)>Number(fin.blockNumber)||Number(x.transactionIndex)>=Number(fin.transactionIndex)));
+        if(out){
+          const receipt=await rpc(SEP_RPC,'eth_getTransactionReceipt',[out.transactionHash]);
+          if(receipt?.status==='0x1'){setLi(line,'ok','Original Sepolia ETH withdrawn to the provider',`The finalized split matches Creditcoin. <a href="${EXPLORER_SEP}/tx/${out.transactionHash}">Inspect the actual withdrawal</a>.`);journey?.paid(out.transactionHash);return;}
+        }
+      }
+    }catch(e){setLi(line,'wait','Payout readback pending',e.message);}
+    await sleep(POLL);
+  }
+  setLi(line,'info','Payout is not yet verified','The answer was delivered, but this browser has not confirmed the original ETH withdrawal. Reload this order link to resume.');journey?.payoutPending(true);
+}
+const selectorFull = sig => keccakHex(enc.encode(sig));
 
 async function recoverJob(txHash) {
   if (state.job?.ephemeral) return { privateKey: state.job.ephemeral.privateKey, raw: state.job.ephemeralRaw };
@@ -578,19 +614,34 @@ async function findSettlementTx(jobId) {
   try { return await rpc(CC_RPC, 'eth_getTransactionByHash', [txHash]); } catch { return null; }
 }
 
-/** A refusal is a reverted settlement whose calldata carries this job. Blockscout indexes those. */
+/** Discover indexed refusals first; fresh orders also read recent blocks directly when the explorer lags. */
 async function findRefusal(jobId) {
   const d = state.deployments;
+  const inspect = async tx => {
+    if (!tx?.blockNumber || tx.to?.toLowerCase() !== d.settlement.toLowerCase() || !tx.input?.toLowerCase().includes(jobId.slice(2).toLowerCase())) return null;
+    const receipt = await rpc(CC_RPC, 'eth_getTransactionReceipt', [tx.hash]);
+    if (receipt?.status !== '0x0') return null;
+    let reason = 'The settlement transaction reverted; its reason could not be recovered.';
+    try { await rpc(CC_RPC, 'eth_call', [{ to: tx.to, from: tx.from, data: tx.input }, '0x' + (Number(tx.blockNumber) - 1).toString(16)]); }
+    catch (e) { const m = (String(e.data ?? '') + ' ' + String(e.message)).match(/0x[0-9a-f]{8,}/i); if (m) reason = decodeRevert(m[0]) || reason; }
+    return { hash: tx.hash, block: Number(tx.blockNumber), reason };
+  };
   try {
     const j = await (await fetch(`${EXPLORER_CC}/api/v2/addresses/${d.settlement}/transactions?filter=to`)).json();
     for (const t of (j.items || []).slice(0, 25)) {
       if (t.status === 'ok' || t.result === 'success') continue;
-      const tx = await rpc(CC_RPC, 'eth_getTransactionByHash', [t.hash]);
-      if (tx && tx.input.toLowerCase().includes(jobId.slice(2).toLowerCase())) {
-        let reason = t.revert_reason || 'the node returned no reason';
-        try { await rpc(CC_RPC, 'eth_call', [{ to: tx.to, from: tx.from, data: tx.input }, '0x' + (Number(tx.blockNumber) - 1).toString(16)]); }
-        catch (e) { const m = (String(e.data ?? '') + ' ' + String(e.message)).match(/0x[0-9a-f]{8,}/i); if (m) reason = decodeRevert(m[0]) || reason; }
-        return { hash: t.hash, block: Number(tx.blockNumber), reason };
+      const found = await inspect(await rpc(CC_RPC, 'eth_getTransactionByHash', [t.hash]));
+      if (found) return found;
+    }
+  } catch {}
+  // A reverted transaction emits no event. Read full recent blocks, then require its failed receipt.
+  // Bounded to 240 blocks per pass; indexed history remains available above for older orders.
+  try {
+    const head = Number(await rpc(CC_RPC, 'eth_blockNumber', []));
+    for (let top = head; top > Math.max(0, head - 240); top -= 8) {
+      const blocks = await Promise.all(Array.from({length:Math.min(8,top+1)},(_,i)=>rpc(CC_RPC,'eth_getBlockByNumber',['0x'+(top-i).toString(16),true])));
+      for (const block of blocks) for (const tx of block?.transactions || []) {
+        const found = await inspect(tx); if (found) return found;
       }
     }
   } catch {}
@@ -602,6 +653,7 @@ function decodeRevert(data) {
   return null;
 }
 function showRefusal(el, r) {
+  journey?.refused(r);
   setLi(el, 'no', `Refused on Creditcoin, block ${r.block.toLocaleString('en-GB')}`, `<a href="${EXPLORER_CC}/tx/${r.hash}">${r.hash}</a><br>${r.reason}`);
   $('#after').hidden = false;
   $('#after').innerHTML = `<strong>That is the rail working.</strong> You demanded a build the live enclave is not, so the contract read your requirement out of the proven payment and refused the enclave's signature by name. Nothing was released. Your payment stays in the Sepolia escrow and is reclaimable after the refund delay.`;
@@ -631,8 +683,8 @@ function showResult(result, outcome, jobId) {
   $('#pay').addEventListener('click', pay);
   const tx = q.get('tx');
   if (new URLSearchParams(location.search).get('demo') === '1') { const demo = await (await fetch('demo.json')).json(); state.publicDemo = demo; state.salt = demo.record._nonce; for (const [k] of FEATURES) { const field = $(`#f-${k}`); field.value = demo.record[k]; field.disabled = true; } readRecord(); document.querySelectorAll('.preset').forEach(b=>b.disabled=true); $('#s3').hidden=true; $('#s4').hidden=true;  li($('#settle-checks'),'info','Public synthetic example','This example intentionally publishes its disposable answer key; personal sessions never do.'); await watch(demo.sourceTx); }
-  if (tx && /^0x[0-9a-fA-F]{64}$/.test(tx)) { $('#connect').hidden = true; await watch(tx); }
-})().catch(error => { const target=document.querySelector('.answer-status');if(target)target.textContent='Could not load the example: '+error.message+'. Reload to try again.';else li($('#provider-checks'),'no','Could not load the buyer desk',error.message); });
+  if (tx && /^0x[0-9a-fA-F]{64}$/.test(tx)) { $('#connect').hidden = true; journey?.resume(tx);await watch(tx); }
+})().catch(error => { const target=document.querySelector('.answer-status');if(target)target.textContent='Could not load the example: '+error.message+'. Reload to try again.';else {li($('#provider-checks'),'no','Could not load the buyer desk',error.message);if(q.get('tx'))journey?.failed(error.message);} });
 
 // Exposed so the browser test can drive the same code paths a visitor does.
 window.__desk = { seal, open, withTrailer, fromTrailer, canonical, keccakHex, state, watch };

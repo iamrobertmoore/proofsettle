@@ -55,6 +55,8 @@ const eventTopic = (file, name) => {
 };
 const TOPIC_CREATED = eventTopic('ComputeJobEscrow.sol', 'JobCreated');
 const TOPIC_SETTLED = eventTopic('ComputeSettlement.sol', 'JobSettled');
+const TOPIC_FINALIZED=eventTopic('ComputeJobEscrow.sol','JobFinalized');
+const TOPIC_WITHDRAWN=eventTopic('ComputeJobEscrow.sol','PaymentWithdrawn');
 
 // ---------------------------------------------------------------- the enclave, for real
 const enclave = spawn(process.execPath, [join(ROOT, '..', 'enclave', 'server.mjs')], {
@@ -92,14 +94,23 @@ async function mockRpc(path, body) {
   if (path === '/sep') {
     if (method === 'eth_getTransactionReceipt') {
       const h = params[0].toLowerCase();
+      const payout=[...chain.jobs.values()].find(j=>j.withdrawn&&j.payoutHash===h);if(payout)return {status:'0x1',blockNumber:'0x'+(payout.block+2).toString(16)};
       await gateFor(h).p;
       const job = chain.jobs.get(h); if (!job) return null;
       return { status: '0x1', blockNumber: '0x' + job.block.toString(16), transactionHash: h, logs: [{ address: deployments.sourceEscrow, topics: [TOPIC_CREATED, job.jobId, w(job.payer), w(PROVIDER)], data: '0x' }] };
+    }
+    if(method==='eth_getLogs') {
+      const [topic,jobId]=p0.topics||[];
+      if(topic===TOPIC_FINALIZED){const j=[...chain.jobs.values()].find(j=>j.jobId===jobId&&j.settled?.outcome===1);return j?[{blockNumber:'0x'+(j.block+1).toString(16),transactionIndex:'0x1',data:'0x'+w((j.splitMismatch?1n:10n**15n).toString(16))+w('0')}]:[];}
+      if(topic===TOPIC_WITHDRAWN){return [...chain.jobs.values()].filter(j=>j.withdrawn).map(j=>({blockNumber:'0x'+(j.block+2).toString(16),transactionIndex:'0x1',data:'0x'+w((10n**15n).toString(16)),transactionHash:j.payoutHash}));}
+      return [];
     }
     if (method === 'eth_call') return '0x'+w('1');
     return null;
   }
   // Creditcoin
+  if(method==='eth_getTransactionReceipt'){const j=[...chain.jobs.values()].find(j=>j.refusal?.txHash===params[0]);return j?{status:'0x0'}:null;}
+  if(method==='eth_getBlockByNumber'){const n=Number(params[0]);return {transactions:n===8_999_991?[...chain.jobs.values()].filter(j=>j.refusal).map(j=>({hash:j.refusal.txHash,to:deployments.settlement,from:'0x'+'77'.repeat(20),blockNumber:'0x'+n.toString(16),input:j.refusal.input})):[]};}
   if (method === 'eth_blockNumber') return '0x' + (9_000_000).toString(16);
   if (method === 'eth_call') {
     const data = (p0.data ?? '').toLowerCase(), s = data.slice(0, 10), arg = data.slice(10, 74);
@@ -254,6 +265,7 @@ const expected = score(model, record);
 check(await page.$eval('#pay', (e) => e.hidden), 'pay button hidden until a wallet connects');
 // Token failure must block purchases. Other suites exercise signed enrollment evidence.
 await page.evaluate(() => { window.__desk.state.providerVerified = true; });
+await page.click('#review-order');
 await page.click('#connect');
 await waitText('#pay-checks li', /Connected/);
 check(await page.$eval('#pay', (e) => !e.hidden && !e.disabled), 'pay button enabled after connecting on Sepolia');
@@ -286,13 +298,21 @@ check(decision === expected.decision, `the decision the browser decrypted is the
 const resultText = await page.$eval('#result', (e) => e.textContent);
 check(resultText.includes(String(expected.probability)), 'and so is the probability', String(expected.probability));
 check(consoleErrors.length === 0, 'still no console errors', consoleErrors.slice(0, 2).join(' | '));
+check(!await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'a finalized split without withdrawal is not shown as provider paid');
+job1.withdrawn=true;job1.payoutHash='0x'+'ab'.repeat(32);job1.splitMismatch=true;
+await page.waitForTimeout(800);
+check(!await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'a withdrawal with a mismatched split is not shown as a completed order');
+job1.splitMismatch=false;
+await waitText('#order-headline',/Order complete/);
+check(await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'matching finalization plus actual ETH withdrawal completes the order');
+check((await page.evaluate(()=>window.__sent)).length===1,'tracking completion never submits a second payment');
 // DESK_SHOT=path captures the settled page, for the deck and the video.
 if (process.env.DESK_SHOT) { await page.waitForTimeout(600); await page.screenshot({ path: process.env.DESK_SHOT, fullPage: true }); }
 
 // ================================================================ scenario 2: reload, the answer comes back from the saved key
 console.log('\n--- scenario 2: the same job after a reload ---');
 blockscoutLogs = false;  // force the node road for this one
-await page.goto(`${PAGE}&tx=${job1.txHash}`, { waitUntil: 'networkidle' });
+await page.goto(`${PAGE}&tx=${job1.txHash}`, { waitUntil: 'domcontentloaded' });
 await waitText('#settle-checks li', /hashes to the result/);
 const decision2 = await page.$eval('#result .decision', (e) => e.textContent.trim());
 check(decision2 === expected.decision, 'the answer is recovered with the key saved at payment time', decision2);
@@ -305,6 +325,7 @@ await page.waitForSelector('#build-choice input');
 await page.check(`input[name=build][value="${PREVIOUS}"]`);
 // Token failure must block purchases. Other suites exercise signed enrollment evidence.
 await page.evaluate(() => { window.__desk.state.providerVerified = true; });
+await page.click('#review-order');
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.click('#pay'); await waitText('#pay-checks li', /Payment sent/);
 await waitText('#settle-checks li', /Waiting for Sepolia/);
@@ -316,6 +337,12 @@ const refusedLine = settle.find((t) => /Refused/.test(t)) ?? '';
 check(/EnclaveNotAccepted\(required 0xc0c0/.test(refusedLine) && new RegExp(identity.signer.slice(2, 12), 'i').test(refusedLine), 'the refusal is decoded by name: required build and the signer refused', refusedLine.slice(0, 120));
 check(/rail working/.test(await page.$eval('#after', (e) => e.textContent)), 'the page explains the refusal as the rail working');
 
+// A fresh refusal must still be discoverable when the explorer has not indexed it.
+await page.route('**/api/v2/addresses/**/transactions?filter=to', r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({items:[]})}));
+await page.goto(`${PAGE}&tx=${job3.txHash}`,{waitUntil:'domcontentloaded'});
+await waitText('#order-headline',/Order refused/,30000);
+check(/EnclaveNotAccepted/.test((await texts('#settle-checks li')).join(' ')), 'direct block and failed-receipt lookup finds a fresh refusal while the explorer is stale');
+
 // ================================================================ scenario 4: the enclave refuses to run
 console.log('\n--- scenario 4: the enclave refuses the job and signs the refusal ---');
 await page.goto(PAGE, { waitUntil: 'networkidle' });
@@ -323,6 +350,7 @@ await page.waitForSelector('#build-choice input');
 await page.click('.preset[data-i="2"]');
 // Token failure must block purchases. Other suites exercise signed enrollment evidence.
 await page.evaluate(() => { window.__desk.state.providerVerified = true; });
+await page.click('#review-order');
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.click('#pay'); await waitText('#pay-checks li', /Payment sent/);
 await waitText('#settle-checks li', /Waiting for Sepolia/);
@@ -343,6 +371,7 @@ await page.goto(PAGE, { waitUntil: 'networkidle' });
 await page.waitForSelector('#provider-checks li');
 const seed = JSON.parse(await readFile(join(ROOT, 'enclave.json'), 'utf8'));
 check(/^0x[0-9a-f]{64}$/.test(seed.measurement) && /^0x[0-9a-fA-F]{40}$/.test(seed.signer), 'the seed names a measurement and a signer');
+await page.click('#review-order');
 await page.click('#connect'); await waitText('#pay-checks li', /Connected/);
 await page.waitForTimeout(300);
 const payChecks = await texts('#pay-checks li');

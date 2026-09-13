@@ -171,11 +171,11 @@ const q = new URLSearchParams(location.search);
 const journey = q.get('demo') === '1' ? null : createJourney();
 if (q.get('demo') === '1') {
   document.body.classList.add('example-page');
-  document.title='ProofSettle — Example answer';
+  document.title='ProofSettle: Example answer';
   document.querySelector('.hero .eyebrow').textContent='EXAMPLE ANSWER · COMPLETED TESTNET PURCHASE';
   document.querySelector('h1').textContent='The buyer gets an answer. The record stays sealed.';
   document.querySelector('.hero .lede').textContent='This answer comes from a real, completed settlement. Your browser retrieves the encrypted result and opens it locally, just as the buyer would.';
-  document.querySelector('.journey-note').innerHTML='<strong>A public example of a private workflow.</strong> We use synthetic data and deliberately publish this example’s disposable answer key. In a normal purchase, only the buyer’s browser keeps that key. <a href="evidence.html#evidence">← Back to the five evidence checks</a>';
+  document.querySelector('.journey-note').innerHTML='<strong>A public example of a private workflow.</strong> This example uses synthetic data and deliberately publishes this example’s disposable answer key. In a normal purchase, only the buyer’s browser keeps that key. <a href="evidence.html#evidence">← Back to the five evidence checks</a>';
   document.querySelector('#s5 .snum').textContent='THE DELIVERED ANSWER';
   document.querySelector('#s5 h2').textContent='Open the result, directly from settlement';
   document.querySelector('#s5 > p:not(.snum):not(.note)').textContent='The browser checks the recorded result and decrypts the answer below. This demonstrates private delivery of the requested computation, not the accuracy of a lending model.';
@@ -206,7 +206,7 @@ const CC_CHAIN_ID = 102031;
 const PRICE_WEI = 1_000_000_000_000_000n;
 const CHAIN_KEY = 1;
 const EXPLORER_CC = 'https://creditcoin-testnet.blockscout.com';
-const EXPLORER_SEP = 'https://sepolia.etherscan.io';
+const EXPLORER_SEP = 'https://eth-sepolia.blockscout.com';
 
 // ---------------------------------------------------------------- small helpers
 const $ = (s) => document.querySelector(s);
@@ -395,9 +395,9 @@ function readRecord() {
 // ---------------------------------------------------------------- 03 build
 function renderBuild() {
   const en = state.enclave; const choices = [
-    { v: en.measurement, label: 'Current attested build — expected to deliver' , small: `${en.build}. Registered key for this measured build; Google enrollment evidence is checked before payment.` },
+    { v: en.measurement, label: 'Current attested build: expected to deliver' , small: `${en.build}. Registered key for this measured build; Google enrollment evidence is checked before payment.` },
   ];
-  if (en.previousMeasurement) choices.push({ v: en.previousMeasurement, label: 'Earlier build — intentional refusal test', small: `${en.previousBuild || 'an earlier image'}. This rejection test locks test ETH until the 30-day refund timeout. The live enclave cannot satisfy this older measurement.` });
+  if (en.previousMeasurement) choices.push({ v: en.previousMeasurement, label: en.previousRevocationTx ? 'Earlier build, revoked: a refusal is expected' : 'Earlier build: intentional refusal test', small: `${en.previousBuild || 'an earlier image'}. This rejection test locks test ETH until the 30-day refund timeout. The live enclave cannot satisfy this older measurement.${en.previousRevocationTx ? ' Its original registry binding has also been permanently revoked.' : ''}` });
   choices.push({ v: 'custom', label: 'A measurement you type', small: 'Any 32-byte value. An unavailable build is refused; test ETH remains locked until the 30-day refund timeout.' });
   $('#build-choice').innerHTML = choices.map((c, i) => `<label><input type="radio" name="build" value="${c.v}" ${i === 0 ? 'checked' : ''}><span>${c.label}<small>${c.small}</small></span></label>`).join('')
     + `<div id="custom-wrap" hidden><label for="custom-measurement">Measurement</label><input type="text" id="custom-measurement" placeholder="0x… 32 bytes"></div>`;

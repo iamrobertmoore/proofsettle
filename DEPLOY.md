@@ -80,3 +80,7 @@ Update `deck/facts.json` from actual verified evidence before rendering. Renderi
 ## Release checks
 
 Run `npm run judge:verify`, check CI, verify explorer source, follow the homepage into a fresh buyer order, inspect the judging appendix’s five live checks, open its synthetic reference answer, and check mobile layout. Confirm the worker service is active and reading the new deployment. Archive superseded evidence explicitly; never mix a new enclave identity with an old example in the default walkthrough.
+
+The v2 Sepolia escrow is source-verified at https://eth-sepolia.blockscout.com/address/0x5d5474Fe373bb620e29BF5F2C50FaCA93AD80941. Its `JobCreated` logs decode the buyer policy by field name. The archived 1.2.0 token at `site/releases/v1/attestation.jwt` hashes to `0x3d728c442b940b4de73df04b98be3b3944d0e780f610b115d787883ddb461f1c`, matching its historical registry binding.
+
+The registrar permanently revoked 1.2.0 on 13 September 2026 in transaction `0xe72c5338c76caa655037f3bc66fe656f495e49ea30f7bb8f0dfd88913d90ddd5`. See `site/releases/v1/revocation.json`. The original 1.2.0 signer is inactive and the current 2.0.0 signer remains active. The archive preserves historical evidence; it does not reactivate the retired build.

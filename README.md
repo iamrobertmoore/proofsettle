@@ -1,8 +1,10 @@
+![ProofSettle](site/banner.png)
+
 # ProofSettle
 
-**Private compute. Verifiable payment.** A buyer-controlled settlement rail on Creditcoin: Attestcoin proves a Sepolia payment and its policy; a measured enclave signs the exact request and sealed answer. Both must agree before Creditcoin authorizes settlement.
+**An oracle proves a fact. ProofSettle enforces a policy.** Attestcoin proves the Sepolia payment and the buyer’s requirements inside it. Creditcoin enforces those requirements against a second cryptographic system: a measured enclave’s signature over the exact request and sealed answer. Both must agree before settlement.
 
-[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence for judges](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf) · [DoraHacks](https://dorahacks.io/buidl/48538)
+[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence for judges](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf)
 
 Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet implementation, MIT licensed.
 
@@ -24,9 +26,9 @@ The [evidence manifest](site/demo.json) and [deployment addresses](site/deployme
 
 A small lender needs a model's decision but cannot disclose the applicant's record to an unknown compute provider. ProofSettle seals that record to a measured workload and makes payment conditional on verifiable service completion.
 
-The demo uses eight synthetic financial-behaviour features and a small deterministic logistic model. It demonstrates the settlement protocol, **not validated underwriting**. It requires no GPU. The longer-term use case is externally supplied private computation where the buyer needs both payment and execution guarantees. See [the model card](MODEL_CARD.md).
+The demo uses eight synthetic financial-behaviour features and a small deterministic logistic model. It isolates settlement correctness and requires no GPU. The longer-term use case is externally supplied private computation where the buyer needs both payment and execution guarantees. See [the model card](MODEL_CARD.md).
 
-A successfully computed `decline` still pays the provider. Applicant decisions are private model outputs; `Accepted`, `Rejected` and `Partial` in the contract describe the **compute service**, not applicant eligibility.
+Applicant decisions are private model outputs; `Accepted`, `Rejected` and `Partial` in the contract describe the **compute service**, not applicant eligibility.
 
 ## Architecture
 
@@ -67,6 +69,15 @@ The return key is inside the encrypted envelope. Swapping it changes `envelopeHa
 
 The trailer is `payload || uint32_be(length) || "PSE1"`. Source and destination contracts hash the actual trailer payload. The normal Solidity arguments still decode. The accepted response is encrypted; rejected requests carry a public, non-sensitive error reason.
 
+## What this leaves behind for other Attestcoin builders
+
+- [AttestcoinProven](src/AttestcoinProven.sol) consumes each proof once and treats a false verifier return as failure. [ComputeSettlement](src/ComputeSettlement.sol) shows the receipt-status and pinned-emitter checks, backed by tests and mutations.
+- [PatientBlockProvider](worker/block-provider.ts) lets `RawProofBuilder` work on nodes without `eth_getBlockReceipts`. A [live comparison](worker/test/raw-proof.live.mjs) checks its proof byte for byte against the hosted builder.
+- [The calldata rider](enclave/envelope.mjs) carries encrypted or plain payloads alongside ordinary Solidity calls without changing their ABI arguments. Consumers can bind the actual payload bytes, as the v2 contracts do.
+- [The verifier measurement tool](script/measure.ts) scans CC3 events without sampling and explicitly reports any unread blocks, so other builders can rerun the measurement and assess its coverage.
+
+The [10 September snapshot](site/measurement.json) covered 100,000 blocks with no unread blocks: 284 transaction destination contracts and 38,982 transactions carrying verifier events, compared with 142 and 10,035 in the 23 August scan. These measurements informed the local proof-builder fallback and a [published Hello Bridge tutorial correction](https://github.com/iamrobertmoore/attestcoin-protocol-examples/commit/378492809bc492a1653fe2f4f12194f8e93e4ced) on testnet fee budgeting.
+
 ## Trust and limits
 
 This public testnet prototype has not undergone an independent security audit. Production readiness requires the review and recovery work below.
@@ -88,6 +99,10 @@ The source contract allows settlement within one day and a payer timeout refund 
 `ComputeCredit` retains its contract name for continuity but issues **PSR non-transferable historical receipts**. They are not redeemable money, transferable claims or independent evidence of ETH withdrawal.
 
 Enrollment is permanent per image measurement in this prototype. Restarting the same image with a new ephemeral key requires a new registry/release strategy. Production work includes key rotation, recovery, independent security review and a verified return path. See [SECURITY.md](SECURITY.md).
+
+Build 1.2.0 was [permanently revoked](https://creditcoin-testnet.blockscout.com/tx/0xe72c5338c76caa655037f3bc66fe656f495e49ea30f7bb8f0dfd88913d90ddd5) on 13 September. Its original key is inactive; build 2.0.0 remains active. The [release record](site/releases/v1/revocation.json) pins the transaction, registry and evidence hash.
+
+The retired 1.2.0 enrollment token is [archived with its release](site/releases/v1/attestation.jwt). Its exact bytes match the old registry evidence hash. The old mutable URI now serves the current token; use this archive to audit that historical record.
 
 ## Verify locally
 

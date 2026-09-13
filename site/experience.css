@@ -15,3 +15,5 @@
 @media(max-width:720px){.product-steps{grid-template-columns:1fr;gap:22px}.purchase-page #prepare-order{grid-template-columns:1fr}.purchase-page #s1{grid-column:auto}.purchase-page h1{font-size:34px}.order-stepper li{padding:12px 8px;font-size:11px}.order-stepper li b{display:block;margin:0 0 5px}.delivery-stages{grid-template-columns:1fr 1fr}.order-summary>div{grid-template-columns:1fr;gap:4px}.order-tracker{padding:20px}.order-tracker h3{font-size:24px}.order-clock{font-size:10px;flex-wrap:wrap}.purchase-page #s2>p,.purchase-page #s3>p{min-height:0}.reviewer-intro h1{font-size:35px}}
 
 .ps-nav nav .nav-start:hover,.ps-nav nav .nav-start[aria-current=page]{color:#0c251a;background:#8cf5c5}.ps-nav nav .nav-start[aria-current=page]::after{display:none}
+
+.builder-contributions{display:grid;grid-template-columns:1fr 1fr;gap:28px 40px;margin-top:30px}.builder-contributions article{border-top:1px solid var(--line);padding-top:20px}.builder-contributions h3{font:500 22px var(--display);margin:0 0 12px}.builder-contributions p{color:var(--muted);font-size:14px;line-height:1.7}@media(max-width:720px){.builder-contributions{grid-template-columns:1fr}}

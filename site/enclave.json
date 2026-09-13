@@ -10,5 +10,6 @@
   "previousBuild": "proofsettle-enclave/1.2.0",
   "provider": "0xDA37b5B8BcCaF773F36849347C205AAAC0453919",
   "nonceBound": true,
-  "registeredAt": "2026-09-13T15:03:01.757Z"
+  "registeredAt": "2026-09-13T15:03:01.757Z",
+  "previousRevocationTx": "0xe72c5338c76caa655037f3bc66fe656f495e49ea30f7bb8f0dfd88913d90ddd5"
 }

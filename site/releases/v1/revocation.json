@@ -1,0 +1,15 @@
+{
+  "build": "proofsettle-enclave/1.2.0",
+  "registry": "0xAc014b7Df7f9b2dA343d895F22a392c655338bFb",
+  "measurement": "0xea75311ddf00a6514edcb8d35cd9de829a46f2ad7d2dcc3987a4d73c2c91b741",
+  "signingKey": "0x986fb1b97e1Ae22585A8C9F80d6f44bfC2e884dd",
+  "evidenceHash": "0x3d728c442b940b4de73df04b98be3b3944d0e780f610b115d787883ddb461f1c",
+  "evidenceArchive": "https://proofsettle.pages.dev/releases/v1/attestation.jwt",
+  "reason": "Superseded by proofsettle-enclave/2.0.0. Evidence archived at https://proofsettle.pages.dev/releases/v1/attestation.jwt",
+  "transactionHash": "0xe72c5338c76caa655037f3bc66fe656f495e49ea30f7bb8f0dfd88913d90ddd5",
+  "status": "confirmed",
+  "blockNumber": 5481981,
+  "revokedAt": 1789321050,
+  "revokedAtUtc": "2026-09-13T17:37:30.000Z",
+  "currentBuildStillActive": "proofsettle-enclave/2.0.0"
+}

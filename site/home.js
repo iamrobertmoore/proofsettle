@@ -1,6 +1,6 @@
 import {AbiCoder,keccak256,Interface,JsonRpcProvider,Contract} from './vendor/ethers.min.js';
 const SEP='https://ethereum-sepolia-rpc.publicnode.com',CC='https://rpc.cc3-testnet.creditcoin.network';
-const SE='https://sepolia.etherscan.io/tx/',CE='https://creditcoin-testnet.blockscout.com/tx/';
+const SE='https://eth-sepolia.blockscout.com/tx/',CE='https://creditcoin-testnet.blockscout.com/tx/';
 const status=document.querySelector('#live-status'),detail=document.querySelector('#detail');
 let selected=0,items=[],running=false;
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

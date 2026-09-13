@@ -297,33 +297,19 @@
     .btn:hover, .card:hover { transform: none; }
   }
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="experience.css"></head>
+<body class="workspace-page">
 <div class="sky" aria-hidden="true"></div>
+<header class="ps-nav"><a class="ps-brand" href="index.html" aria-label="ProofSettle overview"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M4 10 18 2 32 10v16L18 34 4 26Z M4 10l14 8 14-8 M18 18v16"/><path class="glow" d="m10 18 5 5 11-12"/></svg>ProofSettle</a><nav aria-label="Main"><a href="index.html">Overview</a><a href="desk.html?demo=1">Example answer</a><a href="desk.html">Buyer desk</a><a href="verify.html">Verification</a><a href="ProofSettle-deck.pdf" target="_blank" rel="noopener">Deck ↗</a><a href="https://github.com/iamrobertmoore/proofsettle" target="_blank" rel="noopener">GitHub ↗</a></nav></header>
 <div class="wrap">
 
-<nav class="topbar">
-  <div class="brand">
-    <span class="chip" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 16.5l5 5L24 10.5" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-    ProofSettle
-  </div>
-  <div class="navlinks">
-    <a href="index.html">Overview</a><a href="desk.html">Buyer desk</a><a href="#check">Check a settlement</a>
-    <a href="#meaning">What it proves</a>
-    <a href="ProofSettle-deck.pdf">Deck</a>
-    <a href="https://github.com/iamrobertmoore/proofsettle">GitHub</a>
-  </div>
-</nav>
+
 
 <header class="hero">
   <p class="eyebrow"><span class="live" aria-hidden="true"></span> Live on Creditcoin CC3 testnet</p>
-  <h1>Settlement is authorized on Creditcoin only when <span class="hl">two proofs agree</span> in one transaction.</h1>
-  <p class="lede">
-    ProofSettle is a settlement rail for off-chain AI compute. A buyer pays on Ethereum and names
-    the exact enclave build they will accept. A contract on Creditcoin authorizes that payment only if
-    <strong>the payment really happened</strong> and <strong>the answer really came from the code
-    they named</strong>. Two independent proofs, of two different kinds, checked together or not at all.
-  </p>
+  <h1>Independently verify<br><span class="hl">a Creditcoin settlement.</span></h1>
+  <p class="lede">Check who signed the delivery, whether their build matches the buyer’s requirement, and whether the recorded payment split adds up. This is the technical detail behind the five-check walkthrough.</p>
+  <div class="journey-note"><strong>Start with the buyer’s story.</strong> <a href="index.html#evidence">Follow the real purchase</a> or <a href="desk.html?demo=1">open its example answer</a>. Use the checks below when you want to inspect the underlying evidence.</div>
   <div class="cta">
     <a class="btn btn-primary" href="#check">Check a settlement</a>
     <a class="btn btn-ghost" href="https://github.com/iamrobertmoore/proofsettle">Read the source</a>
@@ -335,8 +321,7 @@
 <p class="frame r">
   <strong>This page is the audit tool.</strong> It exists so that somebody who was not involved, the
   buyer's auditor, their regulator, a competitor, or you, can check any settlement afterwards without
-  asking permission from anyone, including me. Nothing below is read from a server I control. It is
-  read from Creditcoin and from Google, in your browser, while you watch.
+  asking permission from anyone, including me. The site supplies the deployment addresses and published enrollment token; this browser checks them against Creditcoin and Google’s signing keys. These are read-only checks, with no wallet or payment.
 </p>
 
 <section id="check" class="r">
@@ -721,5 +706,5 @@ fetch('deployments.json').then((r) => (r.ok ? r.json() : null)).then((d) => {
 </style>
 
 
-</body>
+<script src="experience.js" defer></script></body>
 </html>

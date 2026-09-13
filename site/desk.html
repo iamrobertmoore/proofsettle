@@ -89,40 +89,25 @@
   footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
   [hidden]{display:none!important}
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="experience.css"></head>
+<body class="workspace-page">
 <div class="sky" aria-hidden="true"></div>
+<header class="ps-nav"><a class="ps-brand" href="index.html" aria-label="ProofSettle overview"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M4 10 18 2 32 10v16L18 34 4 26Z M4 10l14 8 14-8 M18 18v16"/><path class="glow" d="m10 18 5 5 11-12"/></svg>ProofSettle</a><nav aria-label="Main"><a href="index.html">Overview</a><a href="desk.html?demo=1">Example answer</a><a href="desk.html">Buyer desk</a><a href="verify.html">Verification</a><a href="ProofSettle-deck.pdf" target="_blank" rel="noopener">Deck ↗</a><a href="https://github.com/iamrobertmoore/proofsettle" target="_blank" rel="noopener">GitHub ↗</a></nav></header>
 <div class="wrap">
 
-<nav class="topbar">
-  <a class="brand" href="index.html">
-    <span class="chip" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 16.5l5 5L24 10.5" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-    ProofSettle
-  </a>
-  <div class="navlinks">
-    <a class="on" href="desk.html">Desk</a>
-    <a href="verify.html#check">Verifier</a>
-    <a href="ProofSettle-deck.pdf">Deck</a>
-    <a href="https://github.com/iamrobertmoore/proofsettle">GitHub</a>
-  </div>
-</nav>
+
 
 <header class="hero">
-  <p class="eyebrow">Amara's desk &middot; Creditcoin CC3 testnet</p>
-  <h1>Buy one credit decision. Pay only if <span class="hl">the code you named</span> produced it.</h1>
-  <p class="lede">
-    The applicant's record leaves this browser sealed to a key that exists only inside an attested
-    enclave, riding inside the payment itself. The payment names the exact build you will accept.
-    The answer comes back sealed to a key only this browser holds, riding inside the settlement. And
-    Creditcoin authorizes payment to the provider only when both proofs agree: that you paid, and that the build you
-    named is the one that signed. Nothing in between can read the data or change the verdict.
-  </p>
+  <p class="eyebrow">BUYER DESK · PRIVATE COMPUTE ON CREDITCOIN</p>
+  <h1>Your model’s answer.<br><span class="hl">Your record stays private.</span></h1>
+  <p class="lede">Choose the code you will accept, seal a synthetic applicant record and pay for the computation. Creditcoin checks the payment proof and signed delivery together before authorizing settlement.</p>
+  <div class="journey-note"><strong>You are the buyer.</strong> The provider supplies the model and compute. You keep the answer key, and the payment records exactly what you ordered. <a href="desk.html?demo=1">See a completed example first →</a></div>
 </header>
 
 <section id="s1">
   <p class="snum">01 / The provider</p>
-  <h2>Who you are buying from, and what Google says about them</h2>
-  <p>Read from the repository's published enclave identity and checked here, in your browser, against the registry on Creditcoin and Google's live signing keys.</p>
+  <h2>Check the workload before sharing a record</h2>
+  <p>Confirm that the encryption key belongs to the published confidential workload. Your browser checks Google’s signed enrollment evidence and its registration on Creditcoin before enabling payment.</p>
   <div class="panel">
     <div class="kv" id="provider-kv"></div>
     <ul class="checks" id="provider-checks"></ul>
@@ -165,7 +150,7 @@
 
 <section id="s5">
   <p class="snum">05 / Settlement</p>
-  <h2>Watch it settle on Creditcoin</h2>
+  <h2>Follow your purchase and open the answer</h2>
   <p>The Attestcoin oracle attests Sepolia in batches. Previous runs typically waited seven to nine minutes; live timing varies. Then the provider's worker builds the proof, the enclave runs your job, and both land in one transaction. This page reads every step off the two chains.</p>
   <div class="panel">
     <ul class="checks" id="settle-checks"></ul>
@@ -182,6 +167,33 @@
 <script type="module">
 // ---------------------------------------------------------------- configuration
 const q = new URLSearchParams(location.search);
+if (q.get('demo') === '1') {
+  document.body.classList.add('example-page');
+  document.title='ProofSettle — Example answer';
+  document.querySelector('.hero .eyebrow').textContent='EXAMPLE ANSWER · COMPLETED TESTNET PURCHASE';
+  document.querySelector('h1').textContent='The buyer gets an answer. The record stays sealed.';
+  document.querySelector('.hero .lede').textContent='This answer comes from a real, completed settlement. Your browser retrieves the encrypted result and opens it locally, just as the buyer would.';
+  document.querySelector('.journey-note').innerHTML='<strong>A public example of a private workflow.</strong> We use synthetic data and deliberately publish this example’s disposable answer key. In a normal purchase, only the buyer’s browser keeps that key. <a href="index.html#evidence">← Back to the five evidence checks</a>';
+  document.querySelector('#s5 .snum').textContent='THE DELIVERED ANSWER';
+  document.querySelector('#s5 h2').textContent='Open the result, directly from settlement';
+  document.querySelector('#s5 > p:not(.snum):not(.note)').textContent='The browser checks the recorded result and decrypts the answer below. This demonstrates private delivery of the requested computation, not the accuracy of a lending model.';
+  document.querySelector('.hero').after(document.querySelector('#s5'));
+  const inspection=document.createElement('details');inspection.className='example-inspection';inspection.innerHTML='<summary>Explore the synthetic input and enclave identity</summary>';
+  document.querySelector('#s5').after(inspection);inspection.append(document.querySelector('#s2'),document.querySelector('#s1'));
+  document.querySelector('#s2 > p:not(.snum)').textContent='This is the synthetic record used in the completed purchase. Its fields are read-only so the example always matches the recorded payment.';
+  const checks=document.createElement('details');checks.className='answer-checks';checks.innerHTML='<summary>Inspect the payment and answer verification</summary>';
+  document.querySelector('#settle-checks').before(checks);checks.append(document.querySelector('#settle-checks'));
+  checks.before(document.querySelector('#result'));
+  const answerStatus=document.createElement('p');answerStatus.className='answer-status';answerStatus.setAttribute('role','status');answerStatus.textContent='Reading the completed purchase and opening its encrypted answer…';checks.before(answerStatus);
+  const updateAnswerStatus=()=>{
+    const result=document.querySelector('#result');
+    if(!result.hidden){answerStatus.textContent='Answer opened locally and matched to the recorded result.';answerStatus.classList.add('ok');return;}
+    const failure=document.querySelector('#settle-checks .no');
+    if(failure){answerStatus.textContent='The answer could not be verified. Open the verification details below for the reason.';checks.open=true;}
+  };
+  const answerObserver=new MutationObserver(updateAnswerStatus);for(const target of [document.querySelector('#result'),document.querySelector('#settle-checks')])answerObserver.observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+  document.querySelector('#s3').hidden=true;document.querySelector('#s4').hidden=true;
+}
 const CC_RPC = q.get('rpc') || 'https://rpc.cc3-testnet.creditcoin.network';
 const SEP_RPC = q.get('sepolia') || 'https://sepolia.gateway.tenderly.co';
 const JWKS_URI = q.get('jwks') || 'https://www.googleapis.com/service_accounts/v1/metadata/jwk/signer@confidentialspace-sign.iam.gserviceaccount.com';
@@ -465,7 +477,7 @@ async function watch(txHash) {
   const timeout = Date.now() + 25*60*1000;
   if (state.publicDemo) li(checks,'info','Public synthetic example','Its disposable answer key is deliberately published. Ordinary buyer sessions keep that key private.');
   const d = state.deployments;
-  document.querySelector('#s5').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!state.publicDemo) document.querySelector('#s5').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const mined = li(checks, 'wait', 'Waiting for Sepolia to mine the payment');
   let receipt;
@@ -603,11 +615,11 @@ function showResult(result, outcome, jobId) {
   }
   const max = Math.max(...result.contributions.map((c) => Math.abs(c.contribution)), 0.01);
   box.innerHTML = `
-    <div class="decision ${result.decision}">${result.decision}</div>
-    <p style="margin-top:8px">Score <strong>${(result.scoreBps / 100).toFixed(2)}%</strong>, probability ${result.probability}, from <span class="mono">${result.build}</span>. The answer was opened with the buyer’s key.</p>
-    <div class="bars">${result.contributions.map((c) => `<div class="bar"><span>${c.name.replace(/_/g, ' ')}</span><span class="t"><span class="f" style="${c.contribution >= 0 ? 'left:50%' : 'right:50%'};width:${(Math.abs(c.contribution) / max) * 50}%;background:${c.contribution >= 0 ? 'var(--good)' : 'var(--bad)'}"></span></span><span class="n">${c.contribution >= 0 ? '+' : ''}${c.contribution.toFixed(2)}</span></div>`).join('')}</div>`;
+    <p class="result-kicker">DELIVERED MODEL OUTPUT · SYNTHETIC EXAMPLE</p><div class="decision ${result.decision}">${result.decision}</div>
+    <p style="margin-top:8px">Model score <strong>${(result.scoreBps / 100).toFixed(2)}%</strong>. This is the answer delivered for the buyer’s requested input. Successfully computing an answer earns the provider payment, whether the decision is approve or decline.</p>
+    <details class="model-detail"><summary>Explore how the example model reached this answer</summary><p>Model probability: <strong>${result.probability}</strong> · build <span class="mono">${result.build}</span>.</p><p>Illustrative contributions from the synthetic input. These explain this demonstrator’s output; they are not validated lending criteria.</p><div class="bars">${result.contributions.map((c) => `<div class="bar"><span>${c.name.replace(/_/g, ' ')}</span><span class="t"><span class="f" style="${c.contribution >= 0 ? 'left:50%' : 'right:50%'};width:${(Math.abs(c.contribution) / max) * 50}%;background:${c.contribution >= 0 ? 'var(--good)' : 'var(--bad)'}"></span></span><span class="n">${c.contribution >= 0 ? '+' : ''}${c.contribution.toFixed(2)}</span></div>`).join('')}</div></details>`;
   $('#after').hidden = false;
-  $('#after').innerHTML = `<strong>What just happened, in one sentence.</strong> You paid on Ethereum and named a build; the Attestcoin oracle proved that payment to Creditcoin; the exact build you named opened your sealed record, ran the model you named, and signed the answer; and Creditcoin authorized the payment only because both proofs agreed. The trusted return relayer then releases the original ETH on Sepolia. Check it yourself on <a href="verify.html?job=${jobId}#check">the verifier</a>.`;
+  $('#after').innerHTML = `<strong>Why this purchase matters.</strong> The buyer paid on Ethereum and named a build; the Attestcoin oracle proved that payment to Creditcoin; the selected build opened the sealed record, ran the requested model, and signed the answer; and Creditcoin authorized the payment only because both proofs agreed. The trusted return relayer then releases the original ETH on Sepolia. Check it yourself on <a href="verify.html?job=${jobId}#check">the verifier</a>.`;
 }
 
 // ---------------------------------------------------------------- boot
@@ -618,12 +630,12 @@ function showResult(result, outcome, jobId) {
   $('#connect').addEventListener('click', connect);
   $('#pay').addEventListener('click', pay);
   const tx = q.get('tx');
-  if (new URLSearchParams(location.search).get('demo') === '1') { const demo = await (await fetch('demo.json')).json(); state.publicDemo = demo; state.salt = demo.record._nonce; for (const [k] of FEATURES) { const field = $(`#f-${k}`); field.value = demo.record[k]; field.disabled = true; } readRecord(); document.querySelectorAll('.preset').forEach(b=>b.disabled=true); $('#s3').hidden=true; $('#s4').hidden=true; document.querySelector('h1').textContent='A real job. Opened from its settlement.'; li($('#settle-checks'),'info','Public synthetic example','This example intentionally publishes its disposable answer key; personal sessions never do.'); await watch(demo.sourceTx); }
+  if (new URLSearchParams(location.search).get('demo') === '1') { const demo = await (await fetch('demo.json')).json(); state.publicDemo = demo; state.salt = demo.record._nonce; for (const [k] of FEATURES) { const field = $(`#f-${k}`); field.value = demo.record[k]; field.disabled = true; } readRecord(); document.querySelectorAll('.preset').forEach(b=>b.disabled=true); $('#s3').hidden=true; $('#s4').hidden=true;  li($('#settle-checks'),'info','Public synthetic example','This example intentionally publishes its disposable answer key; personal sessions never do.'); await watch(demo.sourceTx); }
   if (tx && /^0x[0-9a-fA-F]{64}$/.test(tx)) { $('#connect').hidden = true; await watch(tx); }
-})();
+})().catch(error => { const target=document.querySelector('.answer-status');if(target)target.textContent='Could not load the example: '+error.message+'. Reload to try again.';else li($('#provider-checks'),'no','Could not load the buyer desk',error.message); });
 
 // Exposed so the browser test can drive the same code paths a visitor does.
 window.__desk = { seal, open, withTrailer, fromTrailer, canonical, keccakHex, state, watch };
 </script>
-</body>
+<script src="experience.js" defer></script></body>
 </html>

@@ -4,9 +4,9 @@
 
 **An oracle proves a fact. ProofSettle enforces a policy.** Attestcoin proves the Sepolia payment and the buyer’s requirements inside it. Creditcoin enforces those requirements against a second cryptographic system: a measured enclave’s signature over the exact request and sealed answer. Both must agree before settlement.
 
-[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence for judges](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf)
+[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf)
 
-Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet implementation, MIT licensed.
+Built by **Robert Moore**. Public testnet implementation on Creditcoin CC3 and Ethereum Sepolia, MIT licensed.
 
 ## Use it as a buyer
 
@@ -18,7 +18,7 @@ Built by **Robert Moore**, solo, for Creditcoin BUIDL 2026 Fall. Public testnet 
 
 A funded order protects the provider from an unfunded promise. Binding the request and delivered ciphertext protects the buyer from paying for a substituted request or a missing answer. A computed `decline` still pays for successful service: applicant approval is separate from compute completion. Original ETH return uses a **fixed trusted relayer**, described below.
 
-**For judges:** [supporting evidence](https://proofsettle.pages.dev/evidence.html) contains a completed reference run, a deliberately public synthetic answer, independent readbacks and enrollment verification. These are an appendix to the product workflow. The reference answer publishes a disposable key; it is not presented as the result of your new purchase.
+**Checking it without a wallet:** the [evidence page](https://proofsettle.pages.dev/evidence.html) holds a completed reference run, a deliberately public synthetic answer, independent readbacks and enrollment verification. It is an appendix to the product workflow. The reference answer publishes a disposable key; it is not presented as the result of your new purchase.
 
 The [evidence manifest](site/demo.json) and [deployment addresses](site/deployments.json) identify the public reference records. The browser checks public chain data locally. Fresh refusals can be found directly in Creditcoin blocks when the explorer index lags. Verification does not create a new payment or run the model again.
 
@@ -116,7 +116,7 @@ cd proofsettle
 yarn install --frozen-lockfile
 forge install foundry-rs/forge-std --no-git
 npx playwright install chromium
-npm run judge:verify
+npm run verify
 ```
 
 On Linux, use `npx playwright install --with-deps chromium` if system libraries are missing. `yarn install` also installs the enclave's separately pinned cryptography dependencies. `PW_CHROMIUM` can select an existing browser binary.

@@ -79,7 +79,7 @@ Update `deck/facts.json` from actual verified evidence before rendering. Renderi
 
 ## Release checks
 
-Run `npm run judge:verify`, check CI, verify explorer source, follow the homepage into a fresh buyer order, inspect the judging appendix’s five live checks, open its synthetic reference answer, and check mobile layout. Confirm the worker service is active and reading the new deployment. Archive superseded evidence explicitly; never mix a new enclave identity with an old example in the default walkthrough.
+Run `npm run verify`, check CI, verify explorer source, follow the homepage into a fresh buyer order, inspect the evidence page’s five live checks, open its synthetic reference answer, and check mobile layout. Confirm the worker service is active and reading the new deployment. Archive superseded evidence explicitly; never mix a new enclave identity with an old example in the default walkthrough.
 
 The v2 Sepolia escrow is source-verified at https://eth-sepolia.blockscout.com/address/0x5d5474Fe373bb620e29BF5F2C50FaCA93AD80941. Its `JobCreated` logs decode the buyer policy by field name. The archived 1.2.0 token at `site/releases/v1/attestation.jwt` hashes to `0x3d728c442b940b4de73df04b98be3b3944d0e780f610b115d787883ddb461f1c`, matching its historical registry binding.
 

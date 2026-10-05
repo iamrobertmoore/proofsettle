@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Everything a judge can check, in one command, with no key and no account.
+# Everything a reader can check, in one command, with no key and no account.
 #
-#   npm run judge:verify
+#   npm run verify
 #
 # It runs the contract tests and the mutation check that proves they can fail, the launch-decision
 # test for the deployment scripts, the enclave and worker node tests, the three browser suites
@@ -16,7 +16,7 @@
 # they exchange are the real thing.
 #
 # Skips, not failures: a stage whose tool is missing is reported as SKIP and named at the end, so
-# a judge without Foundry still sees every other stage run. The exit code is non-zero only when a
+# a reader without Foundry still sees every other stage run. The exit code is non-zero only when a
 # stage that ran has failed.
 
 set -uo pipefail

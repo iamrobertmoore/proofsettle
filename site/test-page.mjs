@@ -109,7 +109,7 @@ for (const scheme of ['light', 'dark']) {
 
   // The page asks Google Fonts for Tektur and Inter, which are Creditcoin's own faces. This
   // sandbox has no egress to them, and more to the point the page must not depend on them: a
-  // judge on a locked-down network still has to be able to read it. Serve an empty stylesheet
+  // reader on a locked-down network still has to be able to read it. Serve an empty stylesheet
   // and assert the page works anyway, rather than tolerating a font error in the console.
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (route) =>
     route.fulfill({ status: 200, contentType: 'text/css', body: '' }));

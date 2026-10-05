@@ -10,7 +10,7 @@
     "test:enclave": "node --test enclave/test/enclave.test.mjs",
     "test:worker": "node --test worker/test/calldata.test.mjs",
     "test:site": "node site/test-page.mjs && node site/test-attestation.mjs && node site/test-desk.mjs",
-    "judge:verify": "./script/judge-verify.sh",
+    "verify": "./script/verify.sh",
     "worker": "tsx worker/settle.ts",
     "settle": "tsx worker/settle.ts once",
     "dev-identity": "tsx worker/dev-identity.ts",

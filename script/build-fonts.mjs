@@ -9,7 +9,7 @@
  *
  * Two reasons, and neither is aesthetic. The deck is printed to PDF by a headless browser with no
  * outbound network, so a CDN link produces a deck set in whatever the renderer falls back to. And
- * a verification page that a judge opens on a locked-down network should look like itself rather
+ * a verification page that a reader opens on a locked-down network should look like itself rather
  * than degrade quietly. Latin subsets only, which is what the deck and the page use.
  *
  * Licences are in assets/fonts. Both faces are SIL Open Font License 1.1, which permits embedding.

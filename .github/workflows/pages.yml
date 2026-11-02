@@ -1,4 +1,4 @@
-# Publishes site/ to GitHub Pages, with the deck alongside it so both have stable URLs.
+# Publishes site/ to GitHub Pages.
 #
 # GitHub Pages can only publish a branch's root or its /docs folder. The page lives in site/,
 # so this assembles the published directory instead of moving the repo around.

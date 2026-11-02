@@ -4,7 +4,7 @@
 
 **An oracle proves a fact. ProofSettle enforces a policy.** Attestcoin proves the Sepolia payment and the buyer’s requirements inside it. Creditcoin enforces those requirements against a second cryptographic system: a measured enclave’s signature over the exact request and sealed answer. Both must agree before settlement.
 
-[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence](https://proofsettle.pages.dev/evidence.html) · [Deck](https://proofsettle.pages.dev/ProofSettle-deck.pdf)
+[Start a private compute job](https://proofsettle.pages.dev/desk.html) · [Evidence](https://proofsettle.pages.dev/evidence.html)
 
 Built by **Robert Moore**. Public testnet implementation on Creditcoin CC3 and Ethereum Sepolia, MIT licensed.
 
@@ -149,7 +149,6 @@ Ten enclave integration tests run the real server outside confidential hardware 
 | [`enclave/`](enclave/) | Measured Node workload, pinned standard signing/hash libraries, encryption and model |
 | [`worker/`](worker/) | Raw proof construction, durable pending-job queue, enclave client and trusted return leg |
 | [`site/`](site/) | Overview, live walkthrough, buyer desk, verifier, evidence and ABIs |
-| [`deck/`](deck/) | Editable HTML deck and PDF at the stable public filename |
 | [`test/`](test/) | Solidity tests and real-server signature fixtures |
 | [`DEPLOY.md`](DEPLOY.md) | Deployment, enrollment, service operation and site publishing |
 | [`site/releases/v1/`](site/releases/v1/) | Superseded deployment identities; current examples use v2 |

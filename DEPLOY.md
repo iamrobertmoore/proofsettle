@@ -64,18 +64,14 @@ After Creditcoin settlement the return leg waits 30 seconds, checks payer/provid
 
 Do not publish real records or private answer keys. The public synthetic fixture is specifically labelled as such.
 
-## Site and stable deck link
+## Site
 
 ```sh
-node deck/build-deck.mjs
-node deck/render.mjs
 ./script/build-site.sh
 npx wrangler pages deploy _site --project-name proofsettle --branch main
 ```
 
-Update `deck/facts.json` from actual verified evidence before rendering. Rendering checks all slide bounds and fails on overflow. Inspect the rendered PDF visually as well.
-
-**Keep `ProofSettle-deck.pdf` at the site root.** Its public URL remains `https://proofsettle.pages.dev/ProofSettle-deck.pdf`. Keep the existing Cloudflare project and production branch. Verify the live file hash and all walkthrough links after deployment.
+Keep the existing Cloudflare project and production branch. Verify the live file hash and all walkthrough links after deployment.
 
 ## Release checks
 

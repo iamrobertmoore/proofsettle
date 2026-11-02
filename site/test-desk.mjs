@@ -315,7 +315,7 @@ job1.splitMismatch=false;
 await waitText('#order-headline',/Order complete/);
 check(await page.$eval('[data-stage=payout]',e=>e.classList.contains('complete')), 'matching finalization plus actual ETH withdrawal completes the order');
 check(Number(await page.evaluate(()=>localStorage.getItem('__txn')))===1,'tracking completion never submits a second payment');
-// DESK_SHOT=path captures the settled page, for the deck and the video.
+// DESK_SHOT=path captures the settled page, for screenshots.
 if (process.env.DESK_SHOT) { await page.waitForTimeout(600); await page.screenshot({ path: process.env.DESK_SHOT, fullPage: true }); }
 
 // ================================================================ scenario 2: reload, the answer comes back from the saved key

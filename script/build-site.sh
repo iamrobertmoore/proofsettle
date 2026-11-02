@@ -4,7 +4,7 @@
 #
 #   ./script/build-site.sh
 #
-# The page, the deck and the attestation token have to sit next to each other, because the page
+# The page and the attestation token have to sit next to each other, because the page
 # fetches the token and verifies it in the browser. Keeping that in one script means the published
 # thing is never a hand-assembled folder that quietly went stale.
 #
@@ -28,7 +28,7 @@ out="_site"
 rm -rf "$out"
 mkdir -p "$out"
 
-for f in site/index.html site/evidence.html site/purchase.js site/verify.html site/desk.html site/style.css site/experience.css site/experience.js site/fonts.css site/home.js site/demo.json site/abis.json site/deployments.json site/enclave.json deck/ProofSettle-deck.pdf enclave/attestation.jwt; do
+for f in site/index.html site/evidence.html site/purchase.js site/verify.html site/desk.html site/style.css site/experience.css site/experience.js site/fonts.css site/home.js site/demo.json site/abis.json site/deployments.json site/enclave.json enclave/attestation.jwt; do
     [ -f "$f" ] || fail "missing $f. The site is incomplete without it."
     cp "$f" "$out/"
 done

@@ -1,5 +1,5 @@
 /**
- * Inline Creditcoin's own typefaces into the deck and the verifier page.
+ * Inline Creditcoin's own typefaces into the site pages.
  *
  *   node script/build-fonts.mjs
  *
@@ -7,10 +7,8 @@
  * fonts. Rather than link to Google's CDN, the woff2 files are vendored in assets/fonts and
  * embedded as data URIs between the FONTS:BEGIN and FONTS:END markers in each file.
  *
- * Two reasons, and neither is aesthetic. The deck is printed to PDF by a headless browser with no
- * outbound network, so a CDN link produces a deck set in whatever the renderer falls back to. And
- * a verification page that a reader opens on a locked-down network should look like itself rather
- * than degrade quietly. Latin subsets only, which is what the deck and the page use.
+ * A verification page that a reader opens on a locked-down network should look like itself rather
+ * than degrade quietly. Latin subsets only, which is what the pages use.
  *
  * Licences are in assets/fonts. Both faces are SIL Open Font License 1.1, which permits embedding.
  */
@@ -39,7 +37,7 @@ const BEGIN = '/* FONTS:BEGIN */';
 const END = '/* FONTS:END */';
 let touched = 0;
 
-for (const rel of ['deck/deck.html', 'site/index.html', 'site/desk.html']) {
+for (const rel of ['site/index.html', 'site/desk.html']) {
   const path = join(ROOT, rel);
   const src = readFileSync(path, 'utf8');
   const a = src.indexOf(BEGIN);
